@@ -13,6 +13,7 @@ namespace cg
       return skip_char(skip_char(skip_char(in, '[') >> r.inf, ',') >> r.sup, ']');
    }
 
+   template <class Scalar>
    std::ostream & operator << (std::ostream & out, range_t<Scalar> const & r)
    {
       out << "[" << r.inf << ", " << r.sup << "]";
