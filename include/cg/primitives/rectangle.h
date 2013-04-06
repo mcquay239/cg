@@ -7,6 +7,7 @@ namespace cg
 {
    template <class Scalar> struct rectangle_2t;
 
+   typedef rectangle_2t<double> rectangle_2;
    typedef rectangle_2t<float> rectangle_2f;
    typedef rectangle_2t<int>   rectangle_2i;
 
@@ -14,11 +15,17 @@ namespace cg
    struct rectangle_2t
    {
       range_t<Scalar> x, y;
+      point_2t<Scalar> p[4];
 
       rectangle_2t(range_t<Scalar> const & x, range_t<Scalar> const & y)
          : x(x)
          , y(y)
-      {}
+      {
+          p[0] = point_2t<Scalar>(x.inf, y.inf);
+          p[1] = point_2t<Scalar>(x.sup, y.inf);
+          p[2] = point_2t<Scalar>(x.sup, y.sup);
+          p[3] = point_2t<Scalar>(x.inf, y.sup);
+      }
 
       rectangle_2t() {}
 
