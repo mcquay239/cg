@@ -17,12 +17,7 @@ namespace cg
    {
       triangle_2t() {}
       triangle_2t(point_2 const & a, point_2 const & b, point_2 const & c)
-      {
-         // gcc 4.2
-         pts_[0] = a;
-         pts_[1] = b;
-         pts_[2] = c;
-      }
+         : pts_( {{a, b, c}} ) {}
 
       point_2t<Scalar> &         operator [] (size_t id)       { return pts_[id]; }
       point_2t<Scalar> const &   operator [] (size_t id) const { return pts_[id]; }
@@ -32,4 +27,16 @@ namespace cg
    private:
       boost::array<point_2t<Scalar>, 3 > pts_;
    };
+
+   template <class Scalar>
+   bool operator == (triangle_2t<Scalar> const &a, triangle_2t<Scalar> const &b)
+   {
+      return (a[0] == b[0]) && (a[1] == b[1]) && (a[2] == b[2]);
+   }
+
+   template <class Scalar>
+   bool operator != (triangle_2t<Scalar> const &a, triangle_2t<Scalar> const &b)
+   {
+      return !(a == b);
+   }
 }

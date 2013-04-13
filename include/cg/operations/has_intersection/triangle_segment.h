@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cg/primitives/point.h>
 #include <cg/primitives/triangle.h>
 #include <cg/primitives/segment.h>
 
@@ -9,7 +8,8 @@
 
 namespace cg
 {
-   inline bool has_intersection(triangle_2 const & t, segment_2 const & s)
+   template<class Scalar>
+   inline bool has_intersection(triangle_2t<Scalar> const & t, segment_2t<Scalar> const & s)
    {
       if (contains(t, s[0]))
          return true;

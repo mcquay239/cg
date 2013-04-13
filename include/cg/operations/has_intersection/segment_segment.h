@@ -1,30 +1,25 @@
 #pragma once
 
 #include <cg/primitives/segment.h>
-#include <cg/primitives/range.h>
-#include <cg/primitives/point.h>
 
 #include <cg/operations/orientation.h>
 
 namespace cg
 {
-   inline bool has_intersection(segment_2 a, segment_2 b)
+   template<class Scalar>
+   inline bool has_intersection(segment_2t<Scalar> const & a, segment_2t<Scalar> const & b)
    {
       orientation_t ab[2];
       for (size_t l = 0; l != 2; ++l)
          ab[l] = orientation(a[0], a[1], b[l]);
 
-      if (ab[0] == ab[1] && ab[0] == CG_COLLINEAR)
-      {
-         if (a[0] > a[1]) std::swap(a[0], a[1]);
-         if (b[0] > b[1]) std::swap(b[0], b[1]);
-
-         typedef range_t<point_2> point_range;
-
-         return !(point_range(a[0], a[1]) & point_range(b[0], b[1])).is_empty();
-      }
-
-      if (ab[0] == ab[1])
+      if(ab[0] == ab[1] && ab[0] == CG_COLLINEAR)
+         return (min(a) <= b[0] && max(a) >= b[0])
+            || (min(a) <= b[1] && max(a) >= b[1])
+            || (min(b) <= a[0] && max(b) >= a[0])
+            || (min(b) <= a[1] && max(b) >= a[1]);
+   
+      if(ab[0] == ab[1])
          return false;
 
       for (size_t l = 0; l != 2; ++l)

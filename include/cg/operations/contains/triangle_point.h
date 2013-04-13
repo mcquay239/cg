@@ -10,7 +10,8 @@
 
 namespace cg
 {
-   inline bool contains(triangle_2 const & t, point_2 const & q)
+   template<class Scalar>
+   inline bool contains(triangle_2t<Scalar> const & t, point_2t<Scalar> const & q)
    {
       orientation_t to = orientation(t[0], t[1], t[2]);
 
