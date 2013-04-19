@@ -17,34 +17,13 @@ namespace cg
       segment_2t() {}
 
       segment_2t(point_2t<Scalar> const & beg, point_2t<Scalar> const & end)
-         : beg(beg)
-         , end(end)
-      {}
+         : pts_( {{beg, end}} ) {}
 
-      point_2t<Scalar> const & operator[] (size_t i) const
-      {
-         switch (i)
-         {
-         case 0: return beg;
-         case 1: return end;
-         default:
-            throw std::logic_error("invalid index: " + boost::lexical_cast<std::string>(i));
-         }
-      }
-
-      point_2t<Scalar> & operator[] (size_t i)
-      {
-         switch (i)
-         {
-         case 0: return beg;
-         case 1: return end;
-         default:
-            throw std::logic_error("invalid index: " + boost::lexical_cast<std::string>(i));
-         }
-      }
+      point_2t<Scalar> &         operator [] (size_t id)       { return pts_[id]; }
+      point_2t<Scalar> const &   operator [] (size_t id) const { return pts_[id]; }
 
    private:
-      point_2t<Scalar> beg, end;
+      boost::array<point_2t<Scalar>, 2 > pts_;
    };
 
    template <class Scalar>

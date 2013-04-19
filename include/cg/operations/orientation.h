@@ -94,4 +94,9 @@ namespace cg
 
       return *orientation_r()(a, b, c);
    }
+
+   inline bool collinear_are_ordered_along_line(point_2 const & a, point_2 const & b, point_2 const & c)
+   {
+      return (a <= b && b <= c) || (c <= b && b <= a);
+   }
 }
