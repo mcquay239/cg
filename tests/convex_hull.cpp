@@ -59,7 +59,7 @@ TEST(graham_hull, uniform)
 {
    using cg::point_2;
 
-   std::vector<point_2> pts = uniform_points(10000000);
+   std::vector<point_2> pts = uniform_points(1000);
    EXPECT_TRUE(is_convex_hull(pts.begin(), cg::graham_hull(pts.begin(), pts.end()), pts.end()));
 }
 
@@ -86,7 +86,7 @@ TEST(andrew_hull, simple2)
                                                     (point_2(2, 3))
                                                     (point_2(1, 1));
 
-   EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));  
+   EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
 }
 
 TEST(andrew_hull, simple3)
@@ -107,6 +107,21 @@ TEST(andrew_hull, uniform)
 {
    using cg::point_2;
 
-   std::vector<point_2> pts = uniform_points(10000000);
+   std::vector<point_2> pts = uniform_points(1000);
    EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
+}
+
+TEST(convex_hull, uniform_andrew1)
+{
+   using cg::point_2;
+
+
+   for (int cnt = 1; cnt <= 5; ++cnt)
+   {
+      for (int i = 0; i < 100; ++i)
+      {
+         std::vector<point_2> pts = uniform_points(cnt);
+         EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
+      }
+   }
 }
