@@ -4,3 +4,12 @@ project(operations-example)
 
 add_executable(triangle_contains_point triangle_contains_point.cpp)
 target_link_libraries(triangle_contains_point visualization ${GMP_LIBRARIES})
+
+add_executable(segments_intersect segments_intersect.cpp)
+target_link_libraries(segments_intersect visualization ${GMP_LIBRARIES})
+
+add_executable(triangle_intersects_segment triangle_intersects_segment.cpp)
+target_link_libraries(triangle_intersects_segment visualization ${GMP_LIBRARIES})
+
+add_executable(rectangle_intersects_segment rectangle_intersects_segment.cpp)
+target_link_libraries(rectangle_intersects_segment visualization ${GMP_LIBRARIES})

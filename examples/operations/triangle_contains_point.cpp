@@ -32,7 +32,7 @@ struct triangle_contains_point_viewer : cg::visualization::viewer_adapter
 
       for (size_t l = 0, lp = 2; l != 3; lp = l++)
          drawer.draw_line(t_[lp], t_[l]);
-	  
+
 	  if (idx_)
 	  {
 		  drawer.set_color((rbutton_pressed_)? Qt::red : Qt::yellow);
@@ -90,7 +90,7 @@ private:
       }
       return idx_;
    }
-	
+
    cg::triangle_2 t_;
    boost::optional<size_t> idx_;
    boost::optional<cg::point_2> current_point_;

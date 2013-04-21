@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdexcept>
-#include <boost/lexical_cast.hpp>
+#include <boost/array.hpp>
 
 #include "point.h"
 

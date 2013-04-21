@@ -1,5 +1,6 @@
 #include <vector>
 #include <stack>
+#include <sstream>
 
 #include <QtOpenGL>
 #include <QColor>

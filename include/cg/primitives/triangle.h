@@ -16,7 +16,7 @@ namespace cg
    struct triangle_2t
    {
       triangle_2t() {}
-      triangle_2t(point_2 const & a, point_2 const & b, point_2 const & c)
+      triangle_2t(point_2t<Scalar> const & a, point_2t<Scalar> const & b, point_2t<Scalar> const & c)
          : pts_( {{a, b, c}} ) {}
 
       point_2t<Scalar> &         operator [] (size_t id)       { return pts_[id]; }

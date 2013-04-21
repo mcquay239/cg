@@ -10,6 +10,7 @@
 
 #include <cg/primitives/point.h>
 #include <cg/convex_hull/graham.h>
+#include <cg/convex_hull/andrew.h>
 
 using cg::point_2f;
 using cg::point_2;
@@ -18,7 +19,7 @@ using cg::point_2;
 struct graham_viewer : cg::visualization::viewer_adapter
 {
    graham_viewer()
-      : ch_size_(0)
+      : algo(graham), ch_size_(0)
    {}
 
    void draw(cg::visualization::drawer_type & drawer) const
@@ -38,17 +39,48 @@ struct graham_viewer : cg::visualization::viewer_adapter
    void print(cg::visualization::printer_type & p) const
    {
       p.corner_stream() << "press mouse rbutton to add point" << cg::visualization::endl
-                        << "points: " << pts_.size() << " convex_hull: " << ch_size_ << cg::visualization::endl;
+                        << "points: " << pts_.size() << " convex_hull: " << ch_size_ << cg::visualization::endl
+                        << "press 'g' or 'a' to change algorithm" << cg::visualization::endl;
+      switch (algo)
+      {
+         case graham : p.corner_stream() << "algorithm: Graham" << cg::visualization::endl; break;
+         case andrew : p.corner_stream() << "algorithm: Andrew" << cg::visualization::endl; break;
+      }
+   }
+
+   void make_hull() {
+      std::vector<point_2>::iterator it;
+      switch (algo)
+      {
+         case graham : it = cg::graham_hull(pts_.begin(), pts_.end()); break;
+         case andrew : it = cg::andrew_hull(pts_.begin(), pts_.end()); break;
+      }
+      ch_size_ = std::distance(pts_.begin(), it);
    }
 
    bool on_release(const point_2f & p)
    {
       pts_.push_back(p);
-      ch_size_ = std::distance(pts_.begin(), cg::graham_hull(pts_.begin(), pts_.end()));
+      make_hull();
+      return true;
+   }
+
+   bool on_key(int key) {
+      switch (key)
+      {
+         case Qt::Key_G : algo = graham; break;
+         case Qt::Key_A : algo = andrew; break;
+         default : return false;
+      }
+      make_hull();
       return true;
    }
 
 private:
+   enum algorithms {
+      graham =       0,
+      andrew =       1,
+   } algo;
    std::vector<point_2> pts_;
    size_t ch_size_;
 };
