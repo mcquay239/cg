@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include <boost/lexical_cast.hpp>
+
 #include "main_window.h"
 
 #include "printer_impl.h"
