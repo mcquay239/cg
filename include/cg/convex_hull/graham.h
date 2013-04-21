@@ -33,6 +33,11 @@ namespace cg
             std::iter_swap(t, p++);
             break;
          case CG_RIGHT:
+            if (pt == b)
+            {
+               std::iter_swap(t, p++);
+               break;
+            }
             t = pt--;
             break;
          case CG_COLLINEAR:
