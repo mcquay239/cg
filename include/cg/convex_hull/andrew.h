@@ -34,7 +34,7 @@ namespace cg
       std::iter_swap(pt, m - 1);
 
       std::sort(pt, m - 1);
-      std::sort(m, q, std::greater<point_2>());
+      std::sort(m, q, std::greater<typename std::iterator_traits<RandIter>::value_type>());
 
       return contour_graham_hull(t, q);
    }

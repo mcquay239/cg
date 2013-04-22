@@ -103,10 +103,59 @@ TEST(andrew_hull, simple3)
    EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
 }
 
-TEST(andrew_hull, uniform)
+TEST(andrew_hull, simple4)
 {
    using cg::point_2;
 
-   std::vector<point_2> pts = uniform_points(10000000);
+   std::vector<point_2> pts = boost::assign::list_of(point_2(0, 0));
+
    EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
+}
+
+TEST(andrew_hull, simple5)
+{
+   using cg::point_2;
+
+   std::vector<point_2> pts = boost::assign::list_of(point_2(0, 0))
+                                                    (point_2(1, 1));
+
+   EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
+}
+
+TEST(andrew_hull, simple6)
+{
+   using cg::point_2;
+
+   std::vector<point_2> pts = boost::assign::list_of(point_2(0, 0))
+                                                    (point_2(1, 1))
+                                                    (point_2(2, 2))
+                                                    (point_2(2, 2))
+                                                    (point_2(3, 3))
+                                                    (point_2(4, 4))
+                                                    (point_2(4, 4))
+                                                    (point_2(5, 5));
+
+   EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
+}
+
+TEST(andrew_hull, uniform0)
+{
+   using cg::point_2;
+
+   std::vector<point_2> pts = uniform_points(500000);
+   EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
+}
+
+TEST(andrew_hull, uniform1)
+{
+   using cg::point_2;
+
+   for (int cnt = 2; cnt <= 6; ++cnt)
+   {
+      for (int i = 0; i < 1000; ++i)
+      {
+         std::vector<point_2> pts = uniform_points(cnt);
+         EXPECT_TRUE(is_convex_hull(pts.begin(), cg::andrew_hull(pts.begin(), pts.end()), pts.end()));
+      }
+   }
 }
