@@ -5,8 +5,9 @@
 namespace cg
 {
    template <class Scalar> struct vector_2t;
-   typedef vector_2t<float> vector_2f;
-   typedef vector_2t<int>   vector_2i;
+   typedef vector_2t<double> vector_2;
+   typedef vector_2t<float>  vector_2f;
+   typedef vector_2t<int>    vector_2i;
 
    template <class Scalar>
    struct vector_2t

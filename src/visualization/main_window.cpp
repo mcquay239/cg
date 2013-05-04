@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#include <boost/lexical_cast.hpp>
+
 #include "main_window.h"
 
 #include "printer_impl.h"
@@ -86,15 +88,18 @@ void main_window_t::paintGL()
 {
    glClear(GL_COLOR_BUFFER_BIT);
 
-   for (drawer_impl::point_buffer_t const & buffer : drawer_.point_buffers)
+   for (auto const & pair : drawer_.point_buffers)
    {
-      glPointSize(buffer.radius);
+      float radius = pair.first;
+      drawer_impl::point_buffer_t const & buffer = pair.second;
+      
+      glPointSize(radius);
 
       glEnableClientState(GL_VERTEX_ARRAY);
       glEnableClientState(GL_COLOR_ARRAY);
 
-      glVertexPointer (2, GL_FLOAT, 0, &buffer.points[0]);
-      glColorPointer  (3, GL_FLOAT, 0, &buffer.colors[0]);
+      glVertexPointer (2, GL_FLOAT, 0, buffer.points.data());
+      glColorPointer  (3, GL_FLOAT, 0, buffer.colors.data());
 
       glDrawArrays(GL_POINTS, 0, buffer.points.size() / 2);
 
@@ -102,15 +107,18 @@ void main_window_t::paintGL()
       glDisableClientState(GL_COLOR_ARRAY);
    }
 
-   for (drawer_impl::segment_buffer_t const & buffer : drawer_.segment_buffers)
+   for (auto const & pair : drawer_.segment_buffers)
    {
-      glLineWidth(buffer.width);
+      float width = pair.first;
+      drawer_impl::segment_buffer_t const & buffer = pair.second;
+      
+      glLineWidth(width);
 
       glEnableClientState(GL_VERTEX_ARRAY);
       glEnableClientState(GL_COLOR_ARRAY);
 
-      glVertexPointer (2, GL_FLOAT, 0, &buffer.segments[0]);
-      glColorPointer  (3, GL_FLOAT, 0, &buffer.colors[0]);
+      glVertexPointer (2, GL_FLOAT, 0, buffer.segments.data());
+      glColorPointer  (3, GL_FLOAT, 0, buffer.colors.data());
 
       glDrawArrays(GL_LINES, 0, buffer.segments.size() / 2);
 

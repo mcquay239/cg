@@ -1,6 +1,7 @@
 #pragma once
 
 #include <limits>
+#include <algorithm>
 
 namespace cg
 {
@@ -8,9 +9,9 @@ namespace cg
    template <class Scalar>
    struct range_t;
 
-    typedef range_t<double> range;
-   typedef range_t<float> range_f;
-   typedef range_t<int> range_i;
+   typedef range_t<double> range;
+   typedef range_t<float>  range_f;
+   typedef range_t<int>    range_i;
 
    template <class Scalar>
    struct range_t
@@ -41,7 +42,7 @@ namespace cg
    template <class Scalar>
    range_t<Scalar> const operator & (range_t<Scalar> const & a, range_t<Scalar> const & b)
    {
-      return range_f(std::max(a.inf, b.inf), std::min(a.sup, b.sup));
+      return range_t<Scalar>(std::max(a.inf, b.inf), std::min(a.sup, b.sup));
    }
 
    inline float center(range_f const & r)

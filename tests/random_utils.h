@@ -2,18 +2,19 @@
 
 #include <boost/random.hpp>
 #include <cg/primitives/point.h>
+#include <misc/random_utils.h>
 
-std::vector<cg::point_2> uniform_points(size_t count)
+inline std::vector<cg::point_2> uniform_points(size_t count)
 {
-   boost::random::mt19937 gen;
-   boost::random::uniform_real_distribution<> distr;
+    util::uniform_random_real<double> rand(-100., 100.);
 
-   std::vector<cg::point_2> res(count);
-   for (size_t l = 0; l != count; ++l)
-   {
-      res[l].x = distr(gen);
-      res[l].y = distr(gen);
-   }
+    std::vector<cg::point_2> res(count);
 
-   return res;
+    for (size_t l = 0; l != count; ++l)
+    {
+        rand >> res[l].x;
+        rand >> res[l].y;
+    }
+
+    return res;
 }

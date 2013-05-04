@@ -15,6 +15,14 @@ namespace cg
       CG_LEFT = 1
    };
 
+   inline bool opposite(orientation_t a, orientation_t b)
+   {
+      if (a == CG_COLLINEAR || b == CG_COLLINEAR)
+         return false;
+
+      return a == -b;
+   }
+
    struct orientation_d
    {
       boost::optional<orientation_t> operator() (point_2 const & a, point_2 const & b, point_2 const & c) const
@@ -85,5 +93,10 @@ namespace cg
          return *v;
 
       return *orientation_r()(a, b, c);
+   }
+
+   inline bool collinear_are_ordered_along_line(point_2 const & a, point_2 const & b, point_2 const & c)
+   {
+      return (a <= b && b <= c) || (c <= b && b <= a);
    }
 }
