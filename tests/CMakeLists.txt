@@ -17,6 +17,7 @@ set(SOURCES
    has_intersection.cpp
    contains.cpp
    convex_hull.cpp
+   dynamic_convex_hull.cpp
 )
 
 add_executable(cg-test ${SOURCES})
