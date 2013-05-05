@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cg/primitives/segment.h>
-
+#include <cg/operations/contains/segment_point.h>
 #include <cg/operations/orientation.h>
 
 namespace cg
@@ -9,6 +9,9 @@ namespace cg
    template<class Scalar>
    bool has_intersection(segment_2t<Scalar> const & a, segment_2t<Scalar> const & b)
    {
+      if (a[0] == a[1])
+         return contains(b, a[0]);
+
       orientation_t ab[2];
       for (size_t l = 0; l != 2; ++l)
          ab[l] = orientation(a[0], a[1], b[l]);
@@ -18,7 +21,7 @@ namespace cg
             || (min(a) <= b[1] && max(a) >= b[1])
             || (min(b) <= a[0] && max(b) >= a[0])
             || (min(b) <= a[1] && max(b) >= a[1]);
-   
+
       if (ab[0] == ab[1])
          return false;
 
