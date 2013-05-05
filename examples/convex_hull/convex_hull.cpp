@@ -11,6 +11,7 @@
 #include <cg/primitives/point.h>
 #include <cg/convex_hull/graham.h>
 #include <cg/convex_hull/andrew.h>
+#include <cg/convex_hull/jarvis.h>
 
 using cg::point_2f;
 using cg::point_2;
@@ -19,7 +20,7 @@ using cg::point_2;
 struct graham_viewer : cg::visualization::viewer_adapter
 {
    graham_viewer()
-      : algo(graham), ch_size_(0)
+      : algo(jarvis), ch_size_(0)
    {}
 
    void draw(cg::visualization::drawer_type & drawer) const
@@ -45,6 +46,7 @@ struct graham_viewer : cg::visualization::viewer_adapter
       {
          case graham : p.corner_stream() << "algorithm: Graham" << cg::visualization::endl; break;
          case andrew : p.corner_stream() << "algorithm: Andrew" << cg::visualization::endl; break;
+         case jarvis : p.corner_stream() << "algorithm: Jarvis" << cg::visualization::endl; break;
       }
    }
 
@@ -54,6 +56,7 @@ struct graham_viewer : cg::visualization::viewer_adapter
       {
          case graham : it = cg::graham_hull(pts_.begin(), pts_.end()); break;
          case andrew : it = cg::andrew_hull(pts_.begin(), pts_.end()); break;
+         case jarvis : it = cg::jarvis_hull(pts_.begin(), pts_.end()); break;
       }
       ch_size_ = std::distance(pts_.begin(), it);
    }
@@ -80,6 +83,7 @@ private:
    enum algorithms {
       graham =       0,
       andrew =       1,
+      jarvis =       2
    } algo;
    std::vector<point_2> pts_;
    size_t ch_size_;
