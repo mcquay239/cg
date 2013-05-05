@@ -52,7 +52,17 @@ namespace cg
          return vertices_num();
       }
 
+      void add_point(point_2t<Scalar> const& point)
+      {
+         pts_.push_back(point);
+      }
+
       point_2t<Scalar> const& operator [] (size_t idx) const
+      {
+         return pts_[idx];
+      }
+
+      point_2t<Scalar> & operator [] (size_t idx)
       {
          return pts_[idx];
       }
