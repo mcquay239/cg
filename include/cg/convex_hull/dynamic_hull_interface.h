@@ -1,5 +1,4 @@
 #pragma once
-#include <boost/range/any_range.hpp>
 #include <cg/primitives/point.h>
 
 using cg::point_2;
