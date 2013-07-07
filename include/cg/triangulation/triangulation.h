@@ -5,6 +5,7 @@
 #include <cg/primitives/point.h>
 #include <cg/primitives/contour.h>
 #include <cg/primitives/triangle.h>
+#include <cg/operations/orientation.h>
 
 #include <iostream> // for testing
 
@@ -12,7 +13,17 @@ namespace cg {
     enum v_type {SPLIT, MERGE, LEFT_REGULAR, RIGHT_REGULAR, START, END};
 
     v_type vertex_type(contour_2::circulator_t c) {
-        return SPLIT;
+        auto cur = *c;
+        c--;
+        auto prev = *c;
+        c++;
+        c++;
+        auto next = *c;
+
+        bool is_hole = orientation(prev, cur, next) == CG_RIGHT;
+        if (cur > prev && cur > next) return is_hole ? SPLIT : START;
+        if (cur < prev && cur < next) return is_hole ? MERGE : END;
+        return next > cur ? RIGHT_REGULAR : LEFT_REGULAR;
     }
 
     std::vector<triangle_2> triangulate(std::vector<contour_2> polygon) {
@@ -27,8 +38,8 @@ namespace cg {
             } while (cur != start);
         }
         std::sort(p.begin(), p.end(), [](const circulator &c1, const circulator &c2) {
-                    if (c1->y != c2->y) return c1->y > c2->y;
-                    return c1->x < c2->x;
+                    if (c1->x != c2->x) return c1->x > c2->x;
+                    return c1->y < c2->y;
                 });
         std::cout << "sorted" << std::endl;
         for (auto c : p) {
