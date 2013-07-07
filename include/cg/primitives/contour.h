@@ -12,7 +12,6 @@ namespace cg
 
    typedef contour_2t<double> contour_2;
    typedef contour_2t<float> contour_2f;
-   typedef contour_2t<double> contour_2;
    typedef contour_2t<int>   contour_2i;
 
    template <class Scalar>
@@ -74,5 +73,5 @@ namespace cg
       std::vector<point_2t<Scalar> > pts_;
    };
 
-   typedef common::range_circulator<contour_2f> contour_circulator;
+   typedef common::range_circulator<contour_2> contour_circulator;
 }
