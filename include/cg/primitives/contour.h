@@ -16,6 +16,8 @@ namespace cg
    template <class Scalar>
    struct contour_2t
    {
+      contour_2t() {}
+
       contour_2t(std::vector<point_2t<Scalar> > const& pts) : pts_(pts)
       {}
 
