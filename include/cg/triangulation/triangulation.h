@@ -20,9 +20,9 @@ namespace cg {
         c++;
         auto next = *c;
 
-        bool is_hole = orientation(prev, cur, next) == CG_RIGHT;
-        if (cur > prev && cur > next) return is_hole ? SPLIT : START;
-        if (cur < prev && cur < next) return is_hole ? MERGE : END;
+        bool right = orientation(prev, cur, next) == CG_RIGHT;
+        if (cur > prev && cur > next) return right ? SPLIT : START;
+        if (cur < prev && cur < next) return right ? MERGE : END;
         return next > cur ? RIGHT_REGULAR : LEFT_REGULAR;
     }
 
@@ -39,7 +39,7 @@ namespace cg {
         }
         std::sort(p.begin(), p.end(), [](const circulator &c1, const circulator &c2) {
                     if (c1->x != c2->x) return c1->x > c2->x;
-                    return c1->y < c2->y;
+                    return c1->y > c2->y;
                 });
         std::cout << "sorted" << std::endl;
         for (auto c : p) {
