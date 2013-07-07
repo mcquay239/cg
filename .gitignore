@@ -1,1 +1,5 @@
 *.user
+*.autosave
+*.un~
+build
+.DS_Store

@@ -31,6 +31,18 @@ TEST(has_intersection, segment_segment)
    point_2 a1(0.5, 0), a2(0.5, 0), a3(0, 0), a4(1, 0);
    segment_2 s1(a1, a2), s2(a3, a4);
    EXPECT_TRUE(cg::has_intersection(s1, s2));
+
+   s1 = { {0, 0}, {0, 0} };
+   s2 = { {-1, -1}, {1, -1} };
+   EXPECT_FALSE(cg::has_intersection(s1, s2));
+
+   s1 = { {0, 0}, {0, 0} };
+   s2 = { {0, 0}, {0, 0} };
+   EXPECT_TRUE(cg::has_intersection(s1, s2));
+
+   s1 = { {0, 0}, {0, 0} };
+   s2 = { {1, 0}, {1, 0} };
+   EXPECT_FALSE(cg::has_intersection(s1, s2));
 }
 
 TEST(has_intersection, triangle_segment)

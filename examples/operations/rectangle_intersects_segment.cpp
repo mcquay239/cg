@@ -13,6 +13,8 @@
 
 #include <cg/operations/has_intersection/rectangle_segment.h>
 
+#include <misc/utils.h>
+
 using cg::point_2;
 using cg::point_2f;
 
@@ -69,13 +71,19 @@ struct rectangle_intersects_segment_viewer : cg::visualization::viewer_adapter
    {
       if (!rbutton_pressed_)
          set_idx(p);
+
       if (!idx_)
          return true;
 
-      if (rbutton_pressed_) {
-         if(on_rect) {
-            (*idx_).first ? r_.x.sup = p.x : r_.x.inf = p.x;
+      if (rbutton_pressed_)
+      {
+         if (on_rect)
+         {
+            (*idx_).first  ? r_.x.sup = p.x : r_.x.inf = p.x;
             (*idx_).second ? r_.y.sup = p.y : r_.y.inf = p.y;
+
+            util::sort2(r_.x.inf, r_.x.sup);
+            util::sort2(r_.y.inf, r_.y.sup);
          }
          else
             s_[(*idx_).first] = p;
