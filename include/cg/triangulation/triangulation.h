@@ -52,22 +52,30 @@ namespace cg {
                     auto slice = std::min(s1[0].x, s2[0].x);
                     auto y1 = s1[0].y + (s1[0].x - slice) / (s1[0].x - s1[1].x) * (s1[1].y - s1[0].y);
                     auto y2 = s2[0].y + (s2[0].x - slice) / (s2[0].x - s2[1].x) * (s2[1].y - s2[0].y); // what if /0 ??
-                    return y1 < y2;
+                    if (std::abs(y1 - y2) > 1e-8) return y1 < y2;
+                    if (s1[0] != s2[0]) return s1[0] < s2[0];
+                    return s1[1] < s2[1];
                 };
         std::map<segment_2, point_2, decltype(segment_comp)> helper(segment_comp);
         for (auto c : p) {
             switch (vertex_type(c)) {
                 case SPLIT:
+                    helper[segment_2(*c, *(c - 1))] = *c;
                     break;
                 case MERGE:
+                    helper.erase(segment_2(*(c + 1), *c));
                     break;
                 case LEFT_REGULAR:
                     break;
                 case RIGHT_REGULAR:
+                    helper.erase(segment_2(*(c + 1), *c));
+                    helper[segment_2(*c, *(c - 1))] = *c;
                     break;
                 case START:
+                    helper[segment_2(*c, *(c - 1))] = *c;
                     break;
                 case END:
+                    helper.erase(segment_2(*(c + 1), *c));
                     break;
             }
         }
