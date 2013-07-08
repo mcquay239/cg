@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <vector>
+#include <map>
 #include <cg/primitives/point.h>
 #include <cg/primitives/contour.h>
 #include <cg/primitives/triangle.h>
+#include <cg/primitives/segment.h>
 #include <cg/operations/orientation.h>
 
 #include <iostream> // for testing
@@ -44,6 +46,30 @@ namespace cg {
         std::cout << "sorted" << std::endl;
         for (auto c : p) {
             std::cout << c->x << " " << c->y << " "  << " type: " << vertex_type(c) << std::endl;
+        }
+
+        auto segment_comp = [](const segment_2 &s1, const segment_2 &s2) {
+                    auto slice = std::min(s1[0].x, s2[0].x);
+                    auto y1 = s1[0].y + (s1[0].x - slice) / (s1[0].x - s1[1].x) * (s1[1].y - s1[0].y);
+                    auto y2 = s2[0].y + (s2[0].x - slice) / (s2[0].x - s2[1].x) * (s2[1].y - s2[0].y); // what if /0 ??
+                    return y1 < y2;
+                };
+        std::map<segment_2, point_2, decltype(segment_comp)> helper(segment_comp);
+        for (auto c : p) {
+            switch (vertex_type(c)) {
+                case SPLIT:
+                    break;
+                case MERGE:
+                    break;
+                case LEFT_REGULAR:
+                    break;
+                case RIGHT_REGULAR:
+                    break;
+                case START:
+                    break;
+                case END:
+                    break;
+            }
         }
         return std::vector<triangle_2>(1);
     }
