@@ -58,25 +58,35 @@ namespace cg {
                 };
         std::map<segment_2, point_2, decltype(segment_comp)> helper(segment_comp);
         for (auto c : p) {
-            switch (vertex_type(c)) {
-                case SPLIT:
-                    helper[segment_2(*c, *(c - 1))] = *c;
-                    break;
-                case MERGE:
-                    helper.erase(segment_2(*(c + 1), *c));
-                    break;
-                case LEFT_REGULAR:
-                    break;
-                case RIGHT_REGULAR:
-                    helper.erase(segment_2(*(c + 1), *c));
-                    helper[segment_2(*c, *(c - 1))] = *c;
-                    break;
-                case START:
-                    helper[segment_2(*c, *(c - 1))] = *c;
-                    break;
-                case END:
-                    helper.erase(segment_2(*(c + 1), *c));
-                    break;
+            v_type type = vertex_type(c);
+            if (type == SPLIT) {
+                segment_2 ej = helper.upper_bound(segment_2(*c, *c))->first;
+
+                helper[ej] = *c;
+                helper[segment_2(*c, *(c + 1))] = *c;
+            }
+            if (type == MERGE) {
+
+                helper.erase(segment_2(*(c - 1), *c));
+                segment_2 ej = helper.upper_bound(segment_2(*c, *c))->first;
+
+                helper[ej] = *c;
+            }
+            if (type == LEFT_REGULAR) {
+
+                helper.erase(segment_2(*(c - 1), *c));
+                helper[segment_2(*c, *(c + 1))] = *c;
+            }
+            if (type == RIGHT_REGULAR) {
+                segment_2 ej = helper.upper_bound(segment_2(*c, *c))->first;
+
+                helper[ej] = *c;
+            }
+            if (type == START) {
+                helper[segment_2(*c, *(c + 1))] = *c;
+            }
+            if (type == END) { 
+                helper.erase(segment_2(*(c - 1), *c));
             }
         }
         return std::vector<triangle_2>(1);
