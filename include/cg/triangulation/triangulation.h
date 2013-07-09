@@ -88,23 +88,23 @@ namespace cg {
                     if (c1->x != c2->x) return c1->x > c2->x;
                     return c1->y > c2->y;
                 });
-        std::cout << "sorted" << std::endl;
-        for (auto c : p) {
-            std::cout << c->x << " " << c->y << " "  << " type: " << vertex_type(c) << std::endl;
-        }
-
-        auto segment_comp = [](const segment_2 &s1, const segment_2 &s2) {
-                    auto slice = std::min(s1[0].x, s2[0].x);
-                    auto y1 = 0, y2 = 0;
-                    if (std::abs(s1[0].x - s1[1].x) > 1e-8) {
-                        y1 = s1[0].y + (s1[0].x - slice) / (s1[0].x - s1[1].x) * (s1[1].y - s1[0].y);
-                    } else y1 = s1[0].y;
-                    if (std::abs(s2[0].x - s2[1].x) > 1e-8) {
-                        y2 = s2[0].y + (s2[0].x - slice) / (s2[0].x - s2[1].x) * (s2[1].y - s2[0].y); 
-                    } else y2 = s2[0].y;
-                    if (std::abs(y1 - y2) > 1e-8) return y1 < y2;
-                    if (s1[0] != s2[0]) return s1[0] < s2[0];
-                    return s1[1] < s2[1];
+        auto pair_comp = [](const segment_2 &s1, const segment_2 &s2) {
+            if (s1[0] != s2[0]) return s1[0] < s2[0];
+            return s1[1] < s2[1];
+        };
+        auto segment_comp = [&pair_comp](const segment_2 &s1, const segment_2 &s2) {
+                    if (s1[0].x < s2[0].x) {
+                        auto res = orientation(s2[0], s2[1], s1[0]);
+                        if (res == CG_COLLINEAR) return pair_comp(s1, s2);
+                        return res == CG_RIGHT;
+                    } else if (s2[0].x < s1[0].x) {
+                        auto res = orientation(s1[0], s1[1], s2[0]); 
+                        if (res == CG_COLLINEAR) return pair_comp(s1, s2);
+                        return res == CG_LEFT;
+                    } else {
+                        if (s1[0].y != s2[0].y) return s1[0].y < s2[0].y;
+                        return pair_comp(s1, s2);
+                    }
                 };
         std::map<segment_2, std::pair<point_2, std::vector<std::shared_ptr<monotone_chain>>>, decltype(segment_comp)> helper(segment_comp);
         for (auto &c : p) {
