@@ -75,4 +75,5 @@ namespace cg
    };
 
    typedef common::range_circulator<contour_2> contour_circulator;
+   typedef common::range_circulator<contour_2f> contour_circulator_f;
 }
