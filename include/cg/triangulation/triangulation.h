@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <map>
+#include <memory>
 #include <cg/primitives/point.h>
 #include <cg/primitives/contour.h>
 #include <cg/primitives/triangle.h>
@@ -28,8 +29,52 @@ namespace cg {
         return next > cur ? RIGHT_REGULAR : LEFT_REGULAR;
     }
 
+    struct monotone_chain {
+        bool left;
+        std::vector<point_2> v;
+        monotone_chain() {}
+
+        monotone_chain(const segment_2 &s1, bool left) : left(left) {
+            v.push_back(s1[0]);
+            v.push_back(s1[1]);
+        }
+    };
+
+    void add(std::vector<triangle_2> &result, std::vector<std::shared_ptr<monotone_chain>> &chains,
+            const segment_2 &s1, bool left = false) {
+        if (chains.size() == 0) {
+            chains.push_back(std::shared_ptr<monotone_chain>(new monotone_chain(s1, left)));
+            return;
+        } 
+        for (auto &chain : chains) {
+            auto &v = chain->v;
+            auto p1 = s1[1];
+            if (chain->v.size() == 2 && s1[0] == chain->v[0] && s1[1] == chain->v[1]) continue;
+            if (s1[0] == chain->v[0]) {
+                //other side
+                for (size_t i = 0; i < v.size() - 1; i++) {
+                    result.push_back(triangle_2(p1, v[i + 1], v[i]));
+                }
+                auto last = v.back();
+                v.clear();
+                v.push_back(last);
+                v.push_back(p1);
+                chain->left ^= 1;
+            } else if (s1[0] == chain->v[chain->v.size() - 1]) {
+                //same side
+                orientation_t need = chain->left ? CG_RIGHT : CG_LEFT;
+                while (v.size() > 1 && orientation(p1, v[v.size() - 1], v[v.size() - 2]) == need) {
+                    result.push_back(triangle_2(p1, v[v.size() - 1], v[v.size() - 2]));
+                    v.pop_back();
+                }
+                v.push_back(p1);
+            }
+        }
+    }
+
     std::vector<triangle_2> triangulate(std::vector<contour_2> polygon) {
         typedef contour_2::circulator_t circulator;
+        std::vector<triangle_2> result;
 
         std::vector<circulator> p;
         for (contour_2 &c : polygon) {
@@ -50,46 +95,130 @@ namespace cg {
 
         auto segment_comp = [](const segment_2 &s1, const segment_2 &s2) {
                     auto slice = std::min(s1[0].x, s2[0].x);
-                    auto y1 = s1[0].y + (s1[0].x - slice) / (s1[0].x - s1[1].x) * (s1[1].y - s1[0].y);
-                    auto y2 = s2[0].y + (s2[0].x - slice) / (s2[0].x - s2[1].x) * (s2[1].y - s2[0].y); // what if /0 ??
+                    auto y1 = 0, y2 = 0;
+                    if (std::abs(s1[0].x - s1[1].x) > 1e-8) {
+                        y1 = s1[0].y + (s1[0].x - slice) / (s1[0].x - s1[1].x) * (s1[1].y - s1[0].y);
+                    } else y1 = s1[0].y;
+                    if (std::abs(s2[0].x - s2[1].x) > 1e-8) {
+                        y2 = s2[0].y + (s2[0].x - slice) / (s2[0].x - s2[1].x) * (s2[1].y - s2[0].y); 
+                    } else y2 = s2[0].y;
                     if (std::abs(y1 - y2) > 1e-8) return y1 < y2;
                     if (s1[0] != s2[0]) return s1[0] < s2[0];
                     return s1[1] < s2[1];
                 };
-        std::map<segment_2, point_2, decltype(segment_comp)> helper(segment_comp);
-        for (auto c : p) {
+        std::map<segment_2, std::pair<point_2, std::vector<std::shared_ptr<monotone_chain>>>, decltype(segment_comp)> helper(segment_comp);
+        for (auto &c : p) {
             v_type type = vertex_type(c);
+            segment_2 prev_edge(*(c - 1), *c);
+            segment_2 cur_edge(*c, *(c + 1)); 
+            segment_2 rev_cur_edge(*(c + 1), *c);
+            segment_2 rev_prev_edge(*c, *(c - 1));
             if (type == SPLIT) {
-                segment_2 ej = helper.upper_bound(segment_2(*c, *c))->first;
-
-                helper[ej] = *c;
-                helper[segment_2(*c, *(c + 1))] = *c;
+                std::cout << "SPLIT" << std::endl;
+                auto ej = helper.upper_bound(segment_2(*c, *c));
+                auto help = ej->second;
+                segment_2 new_seg(help.first, *c);
+                auto &chains = help.second;
+                decltype(help) new_help;
+                help.first = new_help.first = *c;
+                if (chains.size() == 2) {
+                    //merge
+                    add(result, chains, new_seg);
+                    new_help.second.push_back(*(--help.second.end()));
+                    help.second.erase(--help.second.end());
+                    helper[ej->first] = help;
+                    helper[cur_edge] = new_help;
+                } else {
+                    //ordinary
+                    add(result, chains, new_seg, false);
+                    add(result, new_help.second, new_seg, !chains[0]->left);
+                    if (chains[0]->left) {
+                        helper[cur_edge] = help;
+                        helper[ej->first] = new_help;
+                    } else {
+                        helper[cur_edge] = new_help;
+                        helper[ej->first] = help;
+                    }
+                }
             }
             if (type == MERGE) {
+                std::cout << "MERGE" << std::endl;
+                auto ej = helper.find(prev_edge);
+                auto help = ej->second;
+                segment_2 new_seg(help.first, *c);
+                auto &chains = help.second;
+                add(result, chains, prev_edge, true);
+                std::vector<std::shared_ptr<monotone_chain>> res(2);
+                if (chains.size() == 2) {
+                    add(result, chains, new_seg);
+                    res[1] = chains[1];
+                } else {
+                    res[1] = chains[0];
+                }
+                helper.erase(ej);
 
-                helper.erase(segment_2(*(c - 1), *c));
-                segment_2 ej = helper.upper_bound(segment_2(*c, *c))->first;
-
-                helper[ej] = *c;
+                auto ej2 = helper.upper_bound(segment_2(*c, *c));
+                auto help2 = ej2->second;
+                segment_2 new_seg2(help2.first, *c);
+                auto &chains2 = help2.second;
+                add(result, chains2, rev_cur_edge, false);
+                if (chains2.size() == 2) {
+                    add(result, chains2, new_seg2);
+                    res[0] = chains2[0];
+                } else {
+                    res[0] = chains2[0];
+                }
+                helper[ej2->first] = std::make_pair(*c, res);
+            } 
+            if (type == LEFT_REGULAR) { 
+                std::cout << "LEFT REGULAR" << std::endl;
+                auto ej = helper.find(prev_edge);
+                auto help = ej->second;
+                auto &chains = help.second;
+                add(result, chains, prev_edge, true);
+                std::vector<std::shared_ptr<monotone_chain>> res(1);
+                res[0] = chains[0];
+                if (chains.size() == 2) {
+                    segment_2 new_seg(help.first, *c);
+                    add(result, chains, new_seg);
+                    res[0] = chains[1];
+                }
+                helper.erase(ej);
+                helper[cur_edge] = std::make_pair(*c, res);
             }
-            if (type == LEFT_REGULAR) {
-
-                helper.erase(segment_2(*(c - 1), *c));
-                helper[segment_2(*c, *(c + 1))] = *c;
-            }
-            if (type == RIGHT_REGULAR) {
-                segment_2 ej = helper.upper_bound(segment_2(*c, *c))->first;
-
-                helper[ej] = *c;
-            }
+             if (type == RIGHT_REGULAR) { 
+                std::cout << "RIGHT REGULAR" << std::endl;
+                auto ej = helper.upper_bound(segment_2(*c, *c));
+                auto help = ej->second;
+                auto &chains = help.second;
+                add(result, chains, rev_cur_edge, false);
+                std::vector<std::shared_ptr<monotone_chain>> res(1);
+                res[0] = chains[0];
+                if (chains.size() == 2) {
+                    segment_2 new_seg(help.first, *c);
+                    add(result, chains, new_seg);
+                    res[0] = chains[0];
+                }
+                helper[ej->first] = std::make_pair(*c, res);
+             }
             if (type == START) {
-                helper[segment_2(*c, *(c + 1))] = *c;
+                std::cout << "START" << std::endl;
+                helper[cur_edge] = std::make_pair(*c, std::vector<std::shared_ptr<monotone_chain>>(0));
             }
             if (type == END) { 
-                helper.erase(segment_2(*(c - 1), *c));
+                std::cout << "END" << std::endl;
+                auto ej = helper.find(prev_edge);
+                auto help = ej->second;
+                auto &chains = help.second;
+                add(result, chains, prev_edge);
+                add(result, chains, rev_cur_edge);
+                if (chains.size() == 2) {
+                    segment_2 new_seg(help.first, *c);
+                    add(result, chains, new_seg);
+                }
+                helper.erase(ej);
             }
         }
-        return std::vector<triangle_2>(1);
+        return result;
     }
-
 }
