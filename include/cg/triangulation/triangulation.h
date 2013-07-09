@@ -16,13 +16,7 @@ namespace cg {
     enum v_type {SPLIT, MERGE, LEFT_REGULAR, RIGHT_REGULAR, START, END};
 
     v_type vertex_type(contour_2::circulator_t c) {
-        auto cur = *c;
-        c--;
-        auto prev = *c;
-        c++;
-        c++;
-        auto next = *c;
-
+        auto cur = *c, prev = *(c - 1), next = *(c + 1);
         bool right = orientation(prev, cur, next) == CG_RIGHT;
         if (cur > prev && cur > next) return right ? SPLIT : START;
         if (cur < prev && cur < next) return right ? MERGE : END;
