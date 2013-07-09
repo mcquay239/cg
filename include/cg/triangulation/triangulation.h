@@ -73,10 +73,9 @@ namespace cg {
     }
 
     std::vector<triangle_2> triangulate(std::vector<contour_2> polygon) {
-        typedef contour_2::circulator_t circulator;
         std::vector<triangle_2> result;
 
-        std::vector<circulator> p;
+        std::vector<contour_2::circulator_t> p;
         for (contour_2 &c : polygon) {
             auto start = c.circulator();
             auto cur = start;
@@ -84,10 +83,8 @@ namespace cg {
                 p.push_back(cur++);
             } while (cur != start);
         }
-        std::sort(p.begin(), p.end(), [](const circulator &c1, const circulator &c2) {
-                    if (c1->x != c2->x) return c1->x > c2->x;
-                    return c1->y > c2->y;
-                });
+        std::sort(p.begin(), p.end(), 
+        [](const contour_2::circulator_t &c1, const contour_2::circulator_t &c2) { return *c1 > *c2; });
         auto segment_comp = [](const segment_2 &s1, const segment_2 &s2) {
                     if (s1[0].x < s2[0].x) {
                         auto res = orientation(s2[0], s2[1], s1[0]);
@@ -99,7 +96,8 @@ namespace cg {
                     if (s1[0] != s2[0]) return s1[0] < s2[0];
                     return s1[1] < s2[1];
                 };
-        std::map<segment_2, std::pair<point_2, std::vector<std::shared_ptr<monotone_chain>>>, decltype(segment_comp)> helper(segment_comp);
+        std::map<segment_2, std::pair<point_2, std::vector<std::shared_ptr<monotone_chain>>>,
+            decltype(segment_comp)> helper(segment_comp);
         for (auto &c : p) {
             v_type type = vertex_type(c);
             segment_2 prev_edge(*(c - 1), *c);
