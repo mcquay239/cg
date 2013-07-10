@@ -10,8 +10,6 @@
 #include <cg/primitives/segment.h>
 #include <cg/operations/orientation.h>
 
-#include <iostream> // for testing
-
 namespace cg {
     enum v_type {SPLIT, MERGE, LEFT_REGULAR, RIGHT_REGULAR, START, END};
 
@@ -48,7 +46,7 @@ namespace cg {
         } 
         for (auto &chain : chains) {
             auto &v = chain->v;
-            auto p1 = s1[1];
+            auto &p1 = s1[1];
             if (chain->v.size() == 2 && s1[0] == chain->v[0] && s1[1] == chain->v[1]) continue;
             if (s1[0] == chain->v[0]) {
                 //other side
@@ -96,113 +94,85 @@ namespace cg {
                     if (s1[0] != s2[0]) return s1[0] < s2[0];
                     return s1[1] < s2[1];
                 };
+        typedef std::vector<std::shared_ptr<monotone_chain>> chains_t;
         std::map<segment_2, std::pair<point_2, std::vector<std::shared_ptr<monotone_chain>>>,
             decltype(segment_comp)> helper(segment_comp);
+        auto left_cont = [&helper, &result](const segment_2 &prev_edge, const point_2 &p, chains_t &res) {
+                    const auto &ej = helper.lower_bound(prev_edge);
+                    auto &old_helper = ej->second.first;
+                    auto &chains = ej->second.second;
+                    segment_2 new_seg(old_helper, p);
+                    add(result, chains, prev_edge, true);
+                    if (chains.size() == 2) {
+                        add(result, chains, new_seg);
+                        res[res.size() - 1] = chains[1];
+                    } else {
+                        res[res.size() - 1] = chains[0];
+                    }
+                    helper[ej->first] = std::make_pair(p, res);
+                    helper.erase(prev_edge);
+                };
+        auto right_cont = [&helper, &result](const segment_2 &rev_cur_edge, const point_2 &p, chains_t &res) {
+                    segment_2 cur_vertex(p, p);
+                    const auto &ej = helper.lower_bound(cur_vertex);
+                    auto &old_helper = ej->second.first;
+                    auto &chains = ej->second.second;
+                    segment_2 new_seg(old_helper, p);
+                    add(result, chains, rev_cur_edge, false);
+                    res[0] = chains[0];
+                    if (chains.size() == 2) add(result, chains, new_seg);
+                    helper[ej->first] = std::make_pair(p, res);
+                    helper.erase(cur_vertex);
+                };
         for (auto &c : p) {
             v_type type = vertex_type(c);
             segment_2 prev_edge(*(c - 1), *c);
             segment_2 cur_edge(*c, *(c + 1)); 
             segment_2 rev_cur_edge(*(c + 1), *c);
-            segment_2 rev_prev_edge(*c, *(c - 1));
+            segment_2 cur_vertex(*c, *c);
             if (type == SPLIT) {
-                auto ej = helper.upper_bound(segment_2(*c, *c));
-                auto help = ej->second;
-                segment_2 new_seg(help.first, *c);
-                auto &chains = help.second;
-                decltype(help) new_help;
-                help.first = new_help.first = *c;
+                const auto &ej = helper.lower_bound(cur_vertex);
+                auto &old_helper = ej->second.first;
+                auto &chains = ej->second.second;
+                segment_2 new_seg(old_helper, *c);
+                chains_t new_chains;
+                point_2 new_helper;
+                new_helper = old_helper = *c;
+                add(result, chains, new_seg, false);
                 if (chains.size() == 2) {
                     //merge
-                    add(result, chains, new_seg);
-                    new_help.second.push_back(*(--help.second.end()));
-                    help.second.erase(--help.second.end());
-                    helper[ej->first] = help;
-                    helper[cur_edge] = new_help;
+                    new_chains.push_back(*(--chains.end()));
+                    chains.erase(--chains.end());
+                    helper[ej->first] = std::make_pair(old_helper, chains);
+                    helper[cur_edge] = std::make_pair(new_helper, new_chains);
                 } else {
                     //ordinary
-                    add(result, chains, new_seg, false);
-                    add(result, new_help.second, new_seg, !chains[0]->left);
+                    add(result, new_chains, new_seg, !chains[0]->left);
                     if (chains[0]->left) {
-                        helper[cur_edge] = help;
-                        helper[ej->first] = new_help;
+                        helper[cur_edge] = std::make_pair(old_helper, chains);
+                        helper[ej->first] = std::make_pair(new_helper, new_chains);
                     } else {
-                        helper[cur_edge] = new_help;
-                        helper[ej->first] = help;
+                        helper[cur_edge] = std::make_pair(new_helper, new_chains);
+                        helper[ej->first] = std::make_pair(old_helper, chains);
                     }
                 }
             }
-            if (type == MERGE) {
-                auto ej = helper.find(prev_edge);
-                auto help = ej->second;
-                segment_2 new_seg(help.first, *c);
-                auto &chains = help.second;
-                add(result, chains, prev_edge, true);
-                std::vector<std::shared_ptr<monotone_chain>> res(2);
-                if (chains.size() == 2) {
-                    add(result, chains, new_seg);
-                    res[1] = chains[1];
-                } else {
-                    res[1] = chains[0];
-                }
-                helper.erase(ej);
+            chains_t res;
+            if (type == MERGE) res = chains_t(2);
+            else if (type == LEFT_REGULAR || type == RIGHT_REGULAR || type == END) res = chains_t(1);
 
-                auto ej2 = helper.upper_bound(segment_2(*c, *c));
-                auto help2 = ej2->second;
-                segment_2 new_seg2(help2.first, *c);
-                auto &chains2 = help2.second;
-                add(result, chains2, rev_cur_edge, false);
-                if (chains2.size() == 2) {
-                    add(result, chains2, new_seg2);
-                    res[0] = chains2[0];
-                } else {
-                    res[0] = chains2[0];
-                }
-                helper[ej2->first] = std::make_pair(*c, res);
+            if (type == MERGE) {
+                left_cont(prev_edge, *c, res);
+                right_cont(rev_cur_edge, *c, res);
             } 
-            if (type == LEFT_REGULAR) { 
-                auto ej = helper.find(prev_edge);
-                auto help = ej->second;
-                auto &chains = help.second;
-                add(result, chains, prev_edge, true);
-                std::vector<std::shared_ptr<monotone_chain>> res(1);
-                res[0] = chains[0];
-                if (chains.size() == 2) {
-                    segment_2 new_seg(help.first, *c);
-                    add(result, chains, new_seg);
-                    res[0] = chains[1];
-                }
-                helper.erase(ej);
-                helper[cur_edge] = std::make_pair(*c, res);
-            }
-             if (type == RIGHT_REGULAR) { 
-                auto ej = helper.upper_bound(segment_2(*c, *c));
-                auto help = ej->second;
-                auto &chains = help.second;
-                add(result, chains, rev_cur_edge, false);
-                std::vector<std::shared_ptr<monotone_chain>> res(1);
-                res[0] = chains[0];
-                if (chains.size() == 2) {
-                    segment_2 new_seg(help.first, *c);
-                    add(result, chains, new_seg);
-                    res[0] = chains[0];
-                }
-                helper[ej->first] = std::make_pair(*c, res);
-             }
-            if (type == START) {
-                helper[cur_edge] = std::make_pair(*c, std::vector<std::shared_ptr<monotone_chain>>(0));
-            }
             if (type == END) { 
-                auto ej = helper.find(prev_edge);
-                auto help = ej->second;
-                auto &chains = help.second;
-                add(result, chains, prev_edge);
-                add(result, chains, rev_cur_edge);
-                if (chains.size() == 2) {
-                    segment_2 new_seg(help.first, *c);
-                    add(result, chains, new_seg);
-                }
-                helper.erase(ej);
+                right_cont(rev_cur_edge, *c, res);
+                left_cont(prev_edge, *c, res);
             }
+            if (type == LEFT_REGULAR) left_cont(prev_edge, *c, res);
+            if (type == RIGHT_REGULAR) right_cont(rev_cur_edge, *c, res);
+            
+            if (type == LEFT_REGULAR || type == START) helper[cur_edge] = std::make_pair(*c, res);
         }
         return result;
     }
