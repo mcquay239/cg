@@ -6,6 +6,7 @@
 #include "cg/operations/contains/triangle_point.h"
 #include "cg/operations/contains/segment_point.h"
 #include "cg/operations/contains/contour_point.h"
+#include <gmpxx.h>
 
 using namespace std;
 using namespace cg;
@@ -53,7 +54,31 @@ bool contains(const point_2 &p, polygon &poly) {
     return true;
 }
 
-bool check_triangulation(polygon poly, vector<triangle_2> t) {
+mpq_class S(polygon &poly) {
+    mpq_class res = 0;
+    for (auto cont : poly) {
+        auto c = cont.circulator();
+        auto st = c;
+        do {
+            point_2 p1(*c), p2(*(c + 1));
+            mpq_class x1(p1.x), x2(p2.x), y1(p1.y), y2(p2.y);
+            res += (x1 * y2 - x2 * y1) / 2;
+        } while (++c != st);
+    }
+    return res;
+}
+
+mpq_class S(triangle_2 &t) {
+    mpq_class res = 0;
+    point_2 p0(t[0]), p1(t[1]), p2(t[2]);
+    mpq_class x0(p0.x), y0(p0.y),x1(p1.x), x2(p2.x), y1(p1.y), y2(p2.y);
+    x1 -= x0; y1 -= y0;
+    x2 -= x0; y2 -= y0;
+    res = (x1 * y2 - x2 * y1) / 2;
+    return abs(res);
+}
+
+void check_triangulation(polygon poly, vector<triangle_2> t) {
     //normal triangles
     size_t count_v = 0;
     for (auto cont : poly) count_v += cont.vertices_num();
@@ -87,7 +112,10 @@ bool check_triangulation(polygon poly, vector<triangle_2> t) {
         EXPECT_TRUE(contains(p, poly));
     }
     //and feel it completely
-    return true;
+    mpq_class Spoly = S(poly);
+    mpq_class Striangles = 0;
+    for (auto tr : t) Striangles += S(tr);
+    EXPECT_TRUE(Spoly == Striangles);
 }
 
 TEST(triangulation, simple_test) {
