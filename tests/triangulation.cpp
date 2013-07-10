@@ -34,7 +34,7 @@ bool inner_intersection(const segment_2 & a, const segment_2 &b) {
 bool inner_intersection(const segment_2 & a, const triangle_2 &t) {
     for (size_t l = 0; l != 3; l++) 
         if (inner_intersection(a, t.side(l))) return true;
-    for (int i = 0; i < 2; i++) {
+    for (size_t i = 0; i < 2; i++) {
         auto p = a[i];
         bool in = true;
         if (!contains(t, p)) in = false;
@@ -48,7 +48,7 @@ bool inner_intersection(const segment_2 & a, const triangle_2 &t) {
 
 bool contains(const point_2 &p, polygon &poly) {
     if (!contains(poly[0], p)) return false;
-    for (int i = 1; i < poly.size(); i++) {
+    for (size_t i = 1; i < poly.size(); i++) {
         if (contains(poly[i], p)) return false;
     }
     return true;
@@ -88,8 +88,8 @@ void check_triangulation(polygon poly, vector<triangle_2> t) {
     }
     //which not intersect
     //(intersections with touches allowed
-    for (int i = 0; i < t.size(); i++) {
-        for (int j = i + 1; j < t.size(); j++) {
+    for (size_t i = 0; i < t.size(); i++) {
+        for (size_t j = i + 1; j < t.size(); j++) {
             auto t1 = t[i], t2 = t[j];
             for (int k = 0; k < 3; k++) {
                 auto s = t1.side(k);
@@ -116,6 +116,17 @@ void check_triangulation(polygon poly, vector<triangle_2> t) {
     mpq_class Striangles = 0;
     for (auto tr : t) Striangles += S(tr);
     EXPECT_TRUE(Spoly == Striangles);
+}
+
+TEST(triangulation, custom_0) {
+    size_t count_contours = 1;
+    vector<contour_2> poly;
+    for (size_t i = 0; i < count_contours; i++) {
+        contour_2 cur({point_2(-109, 42), point_2(-151, -87), point_2(104, -114), point_2(133, 25)});
+        poly.push_back(cur);
+    }
+    vector<triangle_2> v = triangulate(poly);
+    check_triangulation(poly, v); 
 }
 
 TEST(triangulation, simple_test) {
