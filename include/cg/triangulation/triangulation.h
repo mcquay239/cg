@@ -105,7 +105,6 @@ namespace cg {
             segment_2 rev_cur_edge(*(c + 1), *c);
             segment_2 rev_prev_edge(*c, *(c - 1));
             if (type == SPLIT) {
-                std::cout << "SPLIT" << std::endl;
                 auto ej = helper.upper_bound(segment_2(*c, *c));
                 auto help = ej->second;
                 segment_2 new_seg(help.first, *c);
@@ -133,7 +132,6 @@ namespace cg {
                 }
             }
             if (type == MERGE) {
-                std::cout << "MERGE" << std::endl;
                 auto ej = helper.find(prev_edge);
                 auto help = ej->second;
                 segment_2 new_seg(help.first, *c);
@@ -162,7 +160,6 @@ namespace cg {
                 helper[ej2->first] = std::make_pair(*c, res);
             } 
             if (type == LEFT_REGULAR) { 
-                std::cout << "LEFT REGULAR" << std::endl;
                 auto ej = helper.find(prev_edge);
                 auto help = ej->second;
                 auto &chains = help.second;
@@ -178,7 +175,6 @@ namespace cg {
                 helper[cur_edge] = std::make_pair(*c, res);
             }
              if (type == RIGHT_REGULAR) { 
-                std::cout << "RIGHT REGULAR" << std::endl;
                 auto ej = helper.upper_bound(segment_2(*c, *c));
                 auto help = ej->second;
                 auto &chains = help.second;
@@ -193,11 +189,9 @@ namespace cg {
                 helper[ej->first] = std::make_pair(*c, res);
              }
             if (type == START) {
-                std::cout << "START" << std::endl;
                 helper[cur_edge] = std::make_pair(*c, std::vector<std::shared_ptr<monotone_chain>>(0));
             }
             if (type == END) { 
-                std::cout << "END" << std::endl;
                 auto ej = helper.find(prev_edge);
                 auto help = ej->second;
                 auto &chains = help.second;
