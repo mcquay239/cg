@@ -8,13 +8,13 @@ include_directories(${GTEST_INCLUDE_DIR})
 find_package(GMP REQUIRED)
 include_directories(${GMP_INCLUDE_DIR})
 
-find_package(Boost COMPONENTS system chrono random REQUIRED)
+find_package(Boost COMPONENTS system filesystem chrono random REQUIRED)
 
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARYDIR})
 
 set(SOURCES
-   triangulation.cpp
+    triangulation.cpp
    orientation.cpp
    has_intersection.cpp
    contains.cpp
