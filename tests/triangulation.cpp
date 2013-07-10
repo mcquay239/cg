@@ -5,6 +5,7 @@
 #include "cg/triangulation/triangulation.h"
 #include "cg/operations/contains/triangle_point.h"
 #include "cg/operations/contains/segment_point.h"
+#include "cg/operations/contains/contour_point.h"
 
 using namespace std;
 using namespace cg;
@@ -44,6 +45,14 @@ bool inner_intersection(const segment_2 & a, const triangle_2 &t) {
     return false;
 }
 
+bool contains(const point_2 &p, polygon &poly) {
+    if (!contains(poly[0], p)) return false;
+    for (int i = 1; i < poly.size(); i++) {
+        if (contains(poly[i], p)) return false;
+    }
+    return true;
+}
+
 bool check_triangulation(polygon poly, vector<triangle_2> t) {
     //normal triangles
     size_t count_v = 0;
@@ -63,7 +72,20 @@ bool check_triangulation(polygon poly, vector<triangle_2> t) {
             }
         }
     }
+    //and not intersect border
+    for (auto cont : poly) {
+        auto c = cont.circulator();
+        auto st = c;
+        do {
+            for (auto tr : t) 
+                EXPECT_FALSE(inner_intersection(segment_2(*c, *(c + 1)), tr));
+        } while (++c != st); 
+    }
     //and fully contains in polygon
+    for (auto tr : t) {
+        point_2 p((tr[0].x + tr[1].x + tr[2].x) / 3, (tr[0].y + tr[1].y + tr[2].y) / 3);
+        EXPECT_TRUE(contains(p, poly));
+    }
     //and feel it completely
     return true;
 }
