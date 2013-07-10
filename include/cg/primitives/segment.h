@@ -9,7 +9,6 @@ namespace cg
    template <class Scalar> struct segment_2t;
    typedef segment_2t<float> segment_2f;
    typedef segment_2t<double> segment_2;
-
    template <class Scalar>
    struct segment_2t
    {

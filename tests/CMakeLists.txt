@@ -8,11 +8,13 @@ include_directories(${GTEST_INCLUDE_DIR})
 find_package(GMP REQUIRED)
 include_directories(${GMP_INCLUDE_DIR})
 
-find_package(Boost COMPONENTS random REQUIRED)
+find_package(Boost COMPONENTS system filesystem chrono random REQUIRED)
+
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARYDIR})
 
 set(SOURCES
+    triangulation.cpp
    orientation.cpp
    has_intersection.cpp
    contains.cpp
@@ -22,7 +24,7 @@ set(SOURCES
 )
 
 add_executable(cg-test ${SOURCES})
-target_link_libraries(cg-test ${GTEST_BOTH_LIBRARIES} ${GMP_LIBRARIES})
+target_link_libraries(cg-test ${GTEST_BOTH_LIBRARIES} ${GMP_LIBRARIES} ${Boost_LIBRARIES})
 
 file(GLOB_RECURSE HEADERS "*.h")
 add_custom_target(cg_test_headers SOURCES ${HEADERS})
