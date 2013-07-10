@@ -118,13 +118,58 @@ void check_triangulation(polygon poly, vector<triangle_2> t) {
     EXPECT_TRUE(Spoly == Striangles);
 }
 
-TEST(triangulation, custom_0) {
-    size_t count_contours = 1;
+TEST(triangulation, custom_00) {
     vector<contour_2> poly;
-    for (size_t i = 0; i < count_contours; i++) {
-        contour_2 cur({point_2(-109, 42), point_2(-151, -87), point_2(104, -114), point_2(133, 25)});
-        poly.push_back(cur);
-    }
+    contour_2 cur0({point_2(-728, 359), point_2(-828, -211), point_2(-574, -46), point_2(-376, -285), point_2(-328, -95), point_2(-358, -403), point_2(-48, 247), point_2(-707, -47)});
+    poly.push_back(cur0);
+    vector<triangle_2> v = triangulate(poly);
+    check_triangulation(poly, v); 
+}
+
+TEST(triangulation, custom_1) {
+    vector<contour_2> poly;
+    contour_2 cur0({point_2(-494, 326), point_2(-839, -381), point_2(-534, 47), point_2(-243, 48), point_2(-237, -49), point_2(-102, -41), point_2(-111, 201), point_2(-343, 187), point_2(-342, 114), point_2(-538, 118)});
+    poly.push_back(cur0);
+    contour_2 cur1({point_2(-278, 160), point_2(-153, 166), point_2(-144, 0), point_2(-193, 135), point_2(-316, 71)});
+    poly.push_back(cur1);
+    contour_2 cur2({point_2(-561, 143), point_2(-601, 37), point_2(-450, 75), point_2(-602, 31), point_2(-621, 40)});
+    poly.push_back(cur2);
+    contour_2 cur3({point_2(-672, -52), point_2(-631, -11), point_2(-622, -46)});
+    poly.push_back(cur3);
+    vector<triangle_2> v = triangulate(poly);
+    check_triangulation(poly, v); 
+}
+
+TEST(triangulation, custom_2) {
+    vector<contour_2> poly;
+    contour_2 cur0({point_2(-246, 303), point_2(-778, 151), point_2(-782, 45), point_2(-471, 55), point_2(-528, 170), point_2(-246, 138), point_2(-432, -85), point_2(-802, -67), point_2(-571, -11), point_2(-858, 19), point_2(-933, -275), point_2(-492, -397), point_2(-67, -83), point_2(-189, 60), point_2(342, 137), point_2(403, -144), point_2(-73, -301), point_2(-115, -206), point_2(-266, -317), point_2(-289, -407), point_2(41, -458), point_2(219, -339), point_2(241, -258), point_2(384, -352), point_2(382, -447), point_2(691, -366), point_2(692, -192), point_2(835, 103), point_2(601, 236), point_2(335, 310), point_2(167, 372), point_2(-67, 226)});
+    poly.push_back(cur0);
+    contour_2 cur1({point_2(166, 256), point_2(323, 283), point_2(469, 183), point_2(-111, 167), point_2(17, 219), point_2(78, 210)});
+    poly.push_back(cur1);
+    contour_2 cur2({point_2(497, -140), point_2(565, 132), point_2(728, 58), point_2(584, -95), point_2(616, -283), point_2(349, -257)});
+    poly.push_back(cur2);
+    contour_2 cur3({point_2(-784, -272), point_2(-723, -208), point_2(-809, -117), point_2(-527, -130), point_2(-514, -277), point_2(-626, -195)});
+    poly.push_back(cur3);
+    contour_2 cur4({point_2(-363, -151), point_2(-279, 70), point_2(-228, -100), point_2(-286, -35), point_2(-356, -241), point_2(-458, -208), point_2(-426, -128), point_2(-411, -190)});
+    poly.push_back(cur4);
+    vector<triangle_2> v = triangulate(poly);
+    check_triangulation(poly, v); 
+}
+
+TEST(triangulation, custom_3) {
+    vector<contour_2> poly;
+    contour_2 cur0({point_2(-656, 401), point_2(-651, -399), point_2(193, -450), point_2(213, 396)});
+    poly.push_back(cur0);
+    contour_2 cur1({point_2(-460, -288), point_2(-422, 235), point_2(-97, 258), point_2(-125, 24), point_2(-327, 32), point_2(-333, -55), point_2(-42, -98), point_2(-45, -260)});
+    poly.push_back(cur1);
+    contour_2 cur2({point_2(-101, -49), point_2(-299, -30), point_2(-301, 8), point_2(-103, 3)});
+    poly.push_back(cur2);
+}
+
+TEST(triangulation, custom_0) {
+    vector<contour_2> poly;
+    contour_2 cur({point_2(-109, 42), point_2(-151, -87), point_2(104, -114), point_2(133, 25)});
+    poly.push_back(cur);
     vector<triangle_2> v = triangulate(poly);
     check_triangulation(poly, v); 
 }
