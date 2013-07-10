@@ -21,11 +21,9 @@ int main() {
             int n;
             in >> n;
             out << "TEST(triangulation, " << "custom_" << s << ") {" << endl;
-            out << "    size_t count_contours = " + to_string(n) << ";" << endl;
             out << "    vector<contour_2> poly;" << endl;
-            out << "    for (int i = 0; i < count_contours; i++) {" << endl;
             for (int i = 0; i < n; i++) {
-                out << "        contour_2 cur({";
+                out << "    contour_2 cur" + to_string(i) + "({";
                 int m;
                 in >> m;
                 for (int j = 0; j < m; j++) {
@@ -34,10 +32,9 @@ int main() {
                     if (j != 0) out << ", ";
                     out << "point_2(" << x << ", " << y << ")";
                 }
+                    out << "});" << endl;
+                    out << "    poly.push_back(cur" + to_string(i) + ");" << endl;
             }
-            out << "});" << endl;
-            out << "        poly.push_back(cur);" << endl;
-            out << "    }" << endl;
             out << "    vector<triangle_2> v = triangulate(poly);" << endl;
             out << "    check_triangulation(poly, v); " << endl;
             out << "}" << endl << endl;
