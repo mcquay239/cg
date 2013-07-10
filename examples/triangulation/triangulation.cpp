@@ -1,5 +1,8 @@
 #include <vector>
 #include <stack>
+#include <iostream>
+#include <fstream>
+#include <string>
 
 #include <QColor>
 #include <QApplication>
@@ -69,7 +72,7 @@ struct triangulation_viewer : cg::visualization::viewer_adapter
       p.corner_stream() << "double-click to clear." << cg::visualization::endl
                         << "press mouse rbutton for add vertex (click to first point to complete contour)" << cg::visualization::endl
                         << "move vertex with rbutton" << cg::visualization::endl
-                        << "press h to start setting hole" << cg::visualization::endl
+                        << "press h to start setting hole / press t to write current test in file" << cg::visualization::endl
                         << "YOU SHOULD INPUT ONLY SIMPLE POLYGONES(without self-intersections). OUTTER SHOULD BE CCW AND HOLES SHOULD BE CW" << cg::visualization::endl;
       for (auto &cont : poly) {
           for (size_t i = 0; i < cont.size(); ++i) {
@@ -145,11 +148,18 @@ struct triangulation_viewer : cg::visualization::viewer_adapter
 
    bool on_key(int key)
    {
-      switch (key)
-      {
-        case Qt::Key_H : in_building_ = true; poly.push_back(cg::contour_2()); break;
-        default : return false;
-      }
+        if (key == Qt::Key_H) { in_building_ = true; poly.push_back(cg::contour_2()); }
+        else if (key == Qt::Key_T) {
+             if (in_building_) return false;
+             std::ofstream out("../../tests/tests/" + std::to_string(current_test++));
+             out << poly.size() << std::endl;
+             for (auto cont : poly) {
+                 out << cont.size() << std::endl;
+                 for (size_t i = 0; i < cont.size(); i++) {
+                     out << cont[i].x << " " << cont[i].y << std::endl;
+                 }
+             }
+        } else return false;
 
       return true;
    }
@@ -159,6 +169,7 @@ private:
     bool in_building_;
     std::vector<cg::contour_2> poly;
     std::unique_ptr<point_2> current_vertex_;
+    int current_test = 0;
 };
 
 int main(int argc, char ** argv)
