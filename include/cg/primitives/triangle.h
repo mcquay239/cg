@@ -25,7 +25,7 @@ namespace cg
       segment_2t<Scalar> side(size_t id) const { return segment_2t<Scalar>(pts_[(id + 1) % 3], pts_[(id + 2) % 3]); }
 
       void reverse() {
-          std::swap(pts_[0], pts_[2]);
+         std::swap(pts_[0], pts_[2]);
       }
 
    private:
