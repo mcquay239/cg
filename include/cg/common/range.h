@@ -59,16 +59,16 @@ namespace common
          return tmp;
       }
 
-      range_circulator operator+ (int x) {
-          range_circulator res(*this);
-          for (int i = 0; i < x; i++) ++res;
-          return res;
+      range_circulator operator+ (int x) const {
+         range_circulator res(*this);
+         for (int i = 0; i < x; i++) ++res;
+         return res;
       }
 
-      range_circulator operator- (int x) {
-          range_circulator res(*this);
-          for (int i = 0; i < x; i++) --res;
-          return res;
+      range_circulator operator- (int x) const {
+         range_circulator res(*this);
+         for (int i = 0; i < x; i++) --res;
+         return res;
       }
 
       template<typename Range>

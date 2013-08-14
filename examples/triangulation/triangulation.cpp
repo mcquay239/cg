@@ -1,13 +1,9 @@
 #include <vector>
-#include <stack>
-#include <iostream>
 #include <fstream>
 #include <string>
 
 #include <QColor>
 #include <QApplication>
-
-#include <boost/optional.hpp>
 
 #include "cg/visualization/viewer_adapter.h"
 #include "cg/visualization/draw_util.h"
@@ -39,13 +35,13 @@ struct triangulation_viewer : cg::visualization::viewer_adapter
          }
          drawer.set_color(Qt::red);
          for (size_t i = 0; i < poly.size() - 1; i++) {
-          auto &cont = poly[i];
-          for (size_t i = 0; i < cont.size(); ++i) {
-             drawer.draw_line(cont[i], cont[(i + 1) % cont.vertices_num()], 3);
-          }
-      }
+            auto &cont = poly[i];
+            for (size_t i = 0; i < cont.size(); ++i) {
+               drawer.draw_line(cont[i], cont[(i + 1) % cont.vertices_num()], 3);
+            }
+         }
 
-        return;
+         return;
       }
 
       auto res = cg::triangulate(poly);
@@ -53,17 +49,17 @@ struct triangulation_viewer : cg::visualization::viewer_adapter
       drawer.set_color(Qt::green);
 
       for (auto triangle : res) {
-          for (int i = 0; i < 3; i++) {
-             drawer.draw_line(triangle[i], triangle[(i + 1) % 3]);
-          }
+         for (int i = 0; i < 3; i++) {
+            drawer.draw_line(triangle[i], triangle[(i + 1) % 3]);
+         }
       }
       
       drawer.set_color(Qt::red);
 
       for (auto &cont : poly) {
-          for (size_t i = 0; i < cont.size(); ++i) {
-             drawer.draw_line(cont[i], cont[(i + 1) % cont.vertices_num()], 3);
-          }
+         for (size_t i = 0; i < cont.size(); ++i) {
+            drawer.draw_line(cont[i], cont[(i + 1) % cont.vertices_num()], 3);
+         }
       }
    }
 
@@ -75,9 +71,9 @@ struct triangulation_viewer : cg::visualization::viewer_adapter
                         << "press h to start setting hole / press t to write current test in file" << cg::visualization::endl
                         << "YOU SHOULD INPUT ONLY SIMPLE POLYGONES(without self-intersections). OUTTER SHOULD BE CCW AND HOLES SHOULD BE CW" << cg::visualization::endl;
       for (auto &cont : poly) {
-          for (size_t i = 0; i < cont.size(); ++i) {
-             p.global_stream((point_2f)cont[i] + vector_2f(5, 0)) << i;
-          }
+         for (size_t i = 0; i < cont.size(); ++i) {
+            p.global_stream((point_2f)cont[i] + vector_2f(5, 0)) << i;
+         }
       }
    }
 
@@ -108,12 +104,12 @@ struct triangulation_viewer : cg::visualization::viewer_adapter
       }
 
       for (auto &cont : poly) { 
-          for (size_t i = 0; i < cont.size(); ++i) {
-             if (fabs(cont[i].x - p.x) < 15 && fabs(cont[i].y - p.y) < 15) {
-                current_vertex_.reset(&cont[i]);
-                return true;
-             }
-          }
+         for (size_t i = 0; i < cont.size(); ++i) {
+            if (fabs(cont[i].x - p.x) < 15 && fabs(cont[i].y - p.y) < 15) {
+               current_vertex_.reset(&cont[i]);
+               return true;
+            }
+         }
       }
 
       return true;
@@ -140,7 +136,7 @@ struct triangulation_viewer : cg::visualization::viewer_adapter
 
       if (current_vertex_)
       {
-          *current_vertex_ = p;
+         *current_vertex_ = p;
       }
 
       return true;
@@ -148,28 +144,28 @@ struct triangulation_viewer : cg::visualization::viewer_adapter
 
    bool on_key(int key)
    {
-        if (key == Qt::Key_H) { in_building_ = true; poly.push_back(cg::contour_2()); }
-        else if (key == Qt::Key_T) {
-             if (in_building_) return false;
-             std::ofstream out("../../tests/tests/" + std::to_string(current_test++));
-             out << poly.size() << std::endl;
-             for (auto cont : poly) {
-                 out << cont.size() << std::endl;
-                 for (size_t i = 0; i < cont.size(); i++) {
-                     out << cont[i].x << " " << cont[i].y << std::endl;
-                 }
-             }
-        } else return false;
+      if (key == Qt::Key_H) { in_building_ = true; poly.push_back(cg::contour_2()); }
+      else if (key == Qt::Key_T) {
+         if (in_building_) return false;
+         std::ofstream out("../../tests/tests/" + std::to_string(current_test++));
+         out << poly.size() << std::endl;
+         for (auto cont : poly) {
+            out << cont.size() << std::endl;
+            for (size_t i = 0; i < cont.size(); i++) {
+               out << cont[i].x << " " << cont[i].y << std::endl;
+            }
+         }
+      } else return false;
 
       return true;
    }
 
 
 private:
-    bool in_building_;
-    std::vector<cg::contour_2> poly;
-    std::unique_ptr<point_2> current_vertex_;
-    int current_test = 0;
+   bool in_building_;
+   std::vector<cg::contour_2> poly;
+   std::unique_ptr<point_2> current_vertex_;
+   int current_test = 0;
 };
 
 int main(int argc, char ** argv)
