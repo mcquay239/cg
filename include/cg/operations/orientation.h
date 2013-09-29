@@ -59,9 +59,6 @@ namespace cg
          if (res.upper() < 0)
             return CG_RIGHT;
 
-         if (res.upper() == res.lower())
-            return CG_COLLINEAR;
-
          return boost::none;
       }
    };
