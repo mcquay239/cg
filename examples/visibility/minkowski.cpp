@@ -15,7 +15,7 @@
 #include <cg/primitives/contour.h>
 
 #include "cg/io/point.h"
-#include <cg/visibility/minkovsky_sum.h>
+#include <cg/visibility/minkowski_sum.h>
 
 using cg::point_2;
 using cg::contour_2;
