@@ -9,10 +9,12 @@ find_package(GMP REQUIRED)
 include_directories(${GMP_INCLUDE_DIR})
 
 find_package(Boost COMPONENTS random REQUIRED)
+
 include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARYDIR})
 
 set(SOURCES
+   triangulation.cpp
    orientation.cpp
    has_intersection.cpp
    contains.cpp
