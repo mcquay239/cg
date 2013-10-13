@@ -25,16 +25,16 @@ namespace cg
       typedef contour_2t<Scalar> Countour;
       typedef segment_2t<Scalar> Segment;
 
-   for (Countour countor : polygons)
-   {
-      for (auto it_p = countor.begin(); it_p != countor.end(); it_p++)
+      for (Countour countor : polygons)
       {
-         auto it_next = (it_p + 1) == countor.end() ? (countor.begin()) : (it_p + 1);
-         if (a == *it_next || b == *it_next || a == *it_p || b == *it_p) continue;
-         if (has_intersection(Segment(a, b), Segment(*it_p, *it_next)))
-            return false;
+         for (auto it_p = countor.begin(); it_p != countor.end(); it_p++)
+         {
+            auto it_next = (it_p + 1) == countor.end() ? (countor.begin()) : (it_p + 1);
+            if (a == *it_next || b == *it_next || a == *it_p || b == *it_p) continue;
+            if (has_intersection(Segment(a, b), Segment(*it_p, *it_next)))
+               return false;
+         }
       }
-   }
       return true;
    }
 
