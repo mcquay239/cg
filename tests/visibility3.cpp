@@ -12,7 +12,7 @@ using namespace std;
 using cg::point_2;
 using cg::contour_2;
 using cg::segment_2;
-
+//TODO: poor testing, need to be improved
 TEST(visibility, sample)
 {
 	point_2 start(0, 0), finish(4, 4);
