@@ -13,14 +13,14 @@ include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARYDIR})
 
 set(SOURCES
-	orientation.cpp
-	has_intersection.cpp
-	contains.cpp
-	convex_hull.cpp
-	dynamic_convex_hull.cpp
-	convex.cpp
-	visibility3.cpp
-	shortest_path.cpp
+   orientation.cpp
+   has_intersection.cpp
+   contains.cpp
+   convex_hull.cpp
+   dynamic_convex_hull.cpp
+   convex.cpp
+   visibility3.cpp
+   shortest_path.cpp
    minkowski_sum.cpp
 )
 
