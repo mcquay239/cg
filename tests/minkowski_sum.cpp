@@ -23,6 +23,6 @@ TEST(minkovsky, sample)
                                (point_2(4, 1))
                                (point_2(3, 1));
 
-   auto ans = get_minkovsky_sum(contour_2(base), contour_2(add));
+   auto ans = get_minkovsky_sum_convex(contour_2(base), contour_2(add));
 	EXPECT_TRUE(ans.size() == 8);
 }

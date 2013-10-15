@@ -63,7 +63,7 @@ struct minkowski_viewer : cg::visualization::viewer_adapter
       {
          drawer.set_color(Qt::blue);
          drawer.draw_point(center, 3);
-         auto result_cont = cg::get_minkovsky_sum(contour_2(conts[0]), contour_2(reversed));
+         auto result_cont = cg::get_minkovsky_sum_convex(contour_2(conts[0]), contour_2(reversed));
          contour result;
          for (auto it = result_cont.begin(); it != result_cont.end(); it++)
          {
