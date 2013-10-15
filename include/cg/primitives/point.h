@@ -37,13 +37,6 @@ namespace cg
          y += delta.y;
          return *this;
       }
-
-      point_2t<Scalar> & operator += (point_2t<Scalar> const & p2)
-      {
-         x += p2.x;
-         y += p2.y;
-         return *this;
-      }
    };
 
    template <class Scalar>
