@@ -9,7 +9,7 @@
 #include "cg/io/point.h"
 
 #include <cg/primitives/point.h>
-#include <cg/visibility/visibility3.h>
+#include <cg/visibility/visibility_naive.h>
 
 #include <vector>
 
@@ -24,7 +24,12 @@ struct contour_contains_point_viewer : cg::visualization::viewer_adapter
       , modification_mode_(false)
       , s(-120, -120)
       , f(120, 120)
-   {}
+   {
+      cg::contour_2 s_cont( {s} ), f_cont( {f} );
+      contours.push_back(cg::contour_2(s_cont));
+      contours.push_back(cg::contour_2(f_cont));
+      ans = cg::get_visibility_graph(contours);
+   }
 
    void draw(cg::visualization::drawer_type& drawer) const override
    {
@@ -98,7 +103,7 @@ struct contour_contains_point_viewer : cg::visualization::viewer_adapter
       if(modification_mode_)
       {
          contours[current_polygon_].add_point(p);
-         ans = get_visibility_graph(s, f, contours);
+         ans = get_visibility_graph(contours);
          return true;
       }
       else
@@ -108,7 +113,7 @@ struct contour_contains_point_viewer : cg::visualization::viewer_adapter
          contours.push_back(contour);
          modification_mode_ = true;
          current_polygon_ = contours.size() - 1;
-         ans = get_visibility_graph(s, f, contours);
+         ans = get_visibility_graph(contours);
          return true;
       }
 
@@ -131,7 +136,7 @@ struct contour_contains_point_viewer : cg::visualization::viewer_adapter
          f = p;
       else
          contours[current_polygon_][*idx_] = p;
-      ans = get_visibility_graph(s, f, contours);
+      ans = get_visibility_graph(contours);
       return true;
    }
 

@@ -1,26 +1,18 @@
 #pragma once
 
-#include <cg/operations/orientation.h>
-#include <vector>
-#include <iostream>
-#include <algorithm>
-#include <iterator>
-#include <cg/primitives/segment.h>
-#include <cg/primitives/point.h>
-#include <cg/primitives/contour.h>
 #include <cg/operations/has_intersection/segment_segment.h>
 
 namespace cg
 {
 
    template <class Scalar>
-   bool more_than_pi(point_2t<Scalar> const& a, point_2t<Scalar> const& b, point_2t<Scalar> const& c)
+   bool more_than_pi(point_2t<Scalar> const & a, point_2t<Scalar> const & b, point_2t<Scalar> const & c)
    {
       return orientation(a, b, c) != CG_LEFT;
    }
 
    template <class Scalar>
-   bool not_intersect(point_2t<Scalar> const& a, point_2t<Scalar> const& b, std::vector<contour_2t<Scalar> > const& polygons)
+   bool not_intersect(point_2t<Scalar> const & a, point_2t<Scalar> const & b, std::vector<contour_2t<Scalar> > const& polygons)
    {
       typedef contour_2t<Scalar> Countour;
       typedef segment_2t<Scalar> Segment;
@@ -81,28 +73,22 @@ namespace cg
    }
 
    template <class Scalar>
-   std::vector<segment_2t<Scalar> > get_visibility_graph(point_2t<Scalar> const& start, point_2t<Scalar> const& end, std::vector<contour_2t<Scalar> >& polygons)
+   std::vector<segment_2t<Scalar> > get_visibility_graph(std::vector<contour_2t<Scalar> >& polygons, bool remove_redundant_edges = true)
    {
       typedef segment_2t<Scalar> Segment;
       std::vector<Segment> ans;
 
-      append_visible_points(start, polygons.end(), polygons, std::back_inserter(ans));
       for (auto it_poly = polygons.begin(); it_poly != polygons.end(); it_poly++)
       {
          auto cur_polygon = *it_poly;
          for (auto it = cur_polygon.begin(); it != cur_polygon.end(); it++)
             append_visible_points(*it, it_poly, polygons, std::back_inserter(ans));
       }
-      append_visible_points(end, polygons.end(), polygons, std::back_inserter(ans));
-      if (not_intersect(start, end, polygons))
-         ans.push_back(Segment(start, end));
-
-      return rebuild_ans(ans, start, end, polygons);
+      return remove_redundant_edges ? rebuild_ans(ans, polygons) : ans;
    }
 
    template <class Scalar>
-   std::vector<segment_2t<Scalar> > rebuild_ans(std::vector<segment_2t<Scalar> > const& prev_ans, point_2t<Scalar> const& start,
-         point_2t<Scalar> const& end, std::vector<contour_2t<Scalar> > const& polygons)
+   std::vector<segment_2t<Scalar> > rebuild_ans(std::vector<segment_2t<Scalar> > const& prev_ans, std::vector<contour_2t<Scalar> > const& polygons)
    {
       typedef contour_2t<Scalar> Countour;
       typedef segment_2t<Scalar> Segment;

@@ -1,5 +1,5 @@
 #pragma once
-#include <cg/visibility/visibility3.h>
+#include <cg/visibility/visibility_naive.h>
 #include <cg/common/values.h>
 #include <map>
 
@@ -72,7 +72,7 @@ namespace cg
       typedef segment_2t<Scalar> Segment;
       typedef point_2t<Scalar> Point;
 
-      std::vector<Segment> vis_graph = get_visibility_graph(start, end, polygons);
+      std::vector<Segment> vis_graph = get_visibility_graph(polygons);
       std::map<Point, int> number_by_point;
       std::map<int, Point> point_by_number;
       int cur_point = 0;
@@ -82,7 +82,7 @@ namespace cg
          for (auto it = contour.begin(); it != contour.end(); it++)
          {
             point_2t<Scalar> p = *it;
-            add_point(&cur_point, p, number_by_point, point_by_number);
+            if (number_by_point.count(p) == 0) add_point(&cur_point, p, number_by_point, point_by_number);
          }
       }
       add_point(&cur_point, end, number_by_point, point_by_number);
