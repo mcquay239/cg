@@ -13,6 +13,7 @@
 #include <boost/random.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm.hpp>
+#include <boost/tuple/tuple.hpp>
 
 #include <cg/visualization/viewer_adapter.h>
 #include <cg/visualization/draw_util.h>
@@ -42,7 +43,6 @@ struct persistent_set_t
 
    persistent_set_t()
       : current_time_(0)
-      , nodes_(0)
    {}
 
    data_t const * lower_bound(data_t const & d, time_t t) const
@@ -81,44 +81,102 @@ struct persistent_set_t
       return res;
    }
 
+   void insert(data_t const & d, time_t t1, time_t t2)
+   {
+      if (roots_.empty())
+      {
+         node_ptr new_node(new node_t(d, t1, meta_));
+         roots_[t2] = node_ptr();
+         roots_[t1] = new_node;
+         new_node->terminate(t2);
+      }
+      else
+      {
+         node_ptr r, rn;
+         boost::tie(r, rn) = lower_bound_impl(d, t1);
+         node_ptr new_node(new node_t(d, t1, meta_, rn));
+
+         do
+         {
+            new_node->set_next(t1, rn);
+            new_node = new_node->instance(t1);
+
+            set_next(r, new_node, t1);
+
+            if (r)
+            {
+               boost::tie(r, t1) = r->next_event(t1);
+            }
+            else
+            {
+               typename std::map<time_t, node_ptr>::iterator it = roots_.upper_bound(t1);
+               if (it == roots_.end())
+               {
+                  t1 = t2;
+                  r = node_ptr();
+                  rn = node_ptr();
+               }
+               else
+               {
+                  assert(t1 != it->first);
+                  t1 = it->first;
+                  r = it->second;
+               }
+            }
+
+            if (r && r->data() > d)
+            {
+               rn = r;
+               r = node_ptr();
+            }
+            else
+            {
+               assert(r);
+               rn = r->next(t1);
+               assert(rn->data() > d);
+            }
+
+         }
+         while (t1 < t2);
+
+         new_node->terminate(t2, r ? r : rn);
+         set_next(r, rn, t2);
+      }
+   }
+
+private:
+   struct node_t;
+   typedef boost::intrusive_ptr<node_t> node_ptr;
+
+private:
+   void set_next(node_ptr r, node_ptr rn, time_t t)
+   {
+      if (r)
+         r->set_next(t, rn);
+      else
+         roots_[t] = rn;
+   }
+
+private:
    void insert(data_t const & d)
    {
       if (roots_.empty())
       {
-         node_ptr new_node(new node_t(d, current_time_, nodes_));
+         node_ptr new_node(new node_t(d, current_time_, meta_));
          roots_[current_time_] = new_node;
       }
       else
       {
-         std::list<node_ptr> nodes;
-         node_ptr r = roots_.rbegin()->second;
-         while (r && r->data() < d)
-         {
-            nodes.push_back(r);
-            r = r->next(current_time_);
-         }
+         node_ptr r, rn;
+         boost::tie(r, rn) = lower_bound_impl(d);
 
-         if (r && r->data() == d)
-            return;
+         assert(!(rn && rn->data() == d));
 
-         if (nodes.empty())
-         {
-            node_ptr new_node(new node_t(d, current_time_, nodes_, roots_.rbegin()->second));
-            roots_[current_time_] = new_node;
-         }
+         node_ptr new_node(new node_t(d, current_time_, meta_, rn));
+         if (r)
+            r->set_next(current_time_, new_node);
          else
-         {
-            node_ptr new_node(new node_t(d, current_time_, nodes_, nodes.back()->next(current_time_)));
-            while (!nodes.empty() && !nodes.back()->set_next(current_time_, new_node))
-            {
-               node_ptr fork_node = nodes.back()->fork(current_time_, new_node);
-               new_node = fork_node;
-               nodes.pop_back();
-            }
-
-            if (nodes.empty())
-               roots_[current_time_] = new_node;
-         }
+            roots_[current_time_] = new_node;
       }
 
       current_time_ += 1;
@@ -129,33 +187,24 @@ struct persistent_set_t
       if (roots_.empty())
          return false;
 
-      std::list<node_ptr> nodes;
-      node_ptr r = roots_.rbegin()->second;
-      while (r && r->data() < d)
-      {
-         nodes.push_back(r);
-         r = r->next(current_time_);
-      }
+      node_ptr r, rn;
+      boost::tie(r, rn) = lower_bound_impl(d);
 
-      if (!r || r->data() != d)
+      if (!rn || rn->data() != d)
          return false;
 
-      node_ptr next = r->next(current_time_);
-      while (!nodes.empty() && !nodes.back()->set_next(current_time_, next))
-      {
-         node_ptr fork = nodes.back()->fork(current_time_, next);
-         next = fork;
-         nodes.pop_back();
-      }
-
-      if (nodes.empty())
-         roots_[current_time_] = next ? next->fork(current_time_) : node_ptr();
+      node_ptr next = rn->next(current_time_);
+      if (r)
+         r->set_next(current_time_, next);
+      else
+         roots_[current_time_] = next;
 
       current_time_ += 1;
 
       return true;
    }
 
+public:
    typedef boost::function<bool (data_t, time_t, data_t, time_t)> visitor_f;
    void visit(visitor_f const & v) const
    {
@@ -164,7 +213,18 @@ struct persistent_set_t
             node->visit(v);
    }
 
-   size_t nodes() const { return nodes_; }
+   struct meta_info_t
+   {
+      meta_info_t()
+         : nodes(0)
+         , overhead(0)
+      {}
+
+      size_t nodes;
+      size_t overhead;
+   };
+
+   meta_info_t const & meta() const { return meta_; }
 
 protected:
    static time_t infinite_time()
@@ -173,23 +233,22 @@ protected:
    }
 
 private:
-   struct node_t;
-   typedef boost::intrusive_ptr<node_t> node_ptr;
-
    struct node_t : boost::intrusive_ref_counter<node_t, boost::thread_unsafe_counter>
    {
-      node_t(data_t const & data, time_t init_time, size_t & nodes, node_ptr next = node_ptr())
+      node_t(data_t const & data, time_t init_time, meta_info_t & meta, node_ptr next = node_ptr())
          : data_(data)
          , init_time_(init_time)
          , t_(infinite_time())
-         , nodes_(++nodes)
+         , next_event_time_(infinite_time())
+         , meta_(meta)
       {
+         ++meta.nodes;
          next_[0] = next;
       }
 
       ~node_t()
       {
-         --nodes_;
+         --meta_.nodes;
       }
 
       void visit(const visitor_f &v) const
@@ -202,47 +261,115 @@ private:
             if (v(data_, init_time_, next_[l]->data_, next_[l]->init_time_))
                next_[l]->visit(v);
          }
+
+         if (next_event_)
+            next_event_->visit(v);
       }
 
-      node_ptr next(time_t t) const
+      node_ptr instance(time_t t)
       {
-         return t < this->t_ ? next_[0] : next_[1];
+         node_ptr res(this);
+         while (res->next_event_time_ <= t)
+         {
+            update_next(res->init_time_, res->next_[0]);
+            update_next(res->t_, res->next_[1]);
+
+            ++meta_.overhead;
+            res = res->next_event_;
+
+            assert(res);
+         }
+
+         return res;
       }
 
-      bool set_next(time_t t, node_ptr next)
+      node_ptr next(time_t t)
       {
-         if (t_ != infinite_time())
-            return false;
+         node_ptr n = instance(t);
+         return t < n->t_ ? n->next_[0] : n->next_[1];
+      }
 
-         t_ = t;
-         next_[1] = next;
-         return true;
+      void terminate(time_t t)
+      {
+         node_ptr n = instance(t);
+
+         assert(!n->next_event_);
+         assert(n->next_event_time_ == infinite_time());
+
+         n->next_event_time_ = t;
+      }
+
+      void set_next(time_t t, node_ptr next)
+      {
+         node_ptr n = instance(t);
+         if (n->t_ == infinite_time())
+         {
+            if (t == n->init_time_)
+            {
+               n->next_[0] = next;
+            }
+            else if (n->next_[0] != next)
+            {
+               n->t_ = t;
+               n->next_[1] = next;
+            }
+         }
+         else
+         {
+            if (n->t_ == t)
+            {
+               if (n->next_[0] == next)
+               {
+                  n->t_ = infinite_time();
+                  n->next_[1] = node_ptr();
+               }
+               else
+               {
+                  n->next_[1] = next;
+               }
+            }
+            else if (n->next_[1] != next)
+            {
+               n->next_event_time_ = t;
+               node_ptr next_event = new node_t(n->data_, t, n->meta_, next);
+               next_event->next_event_ = n->next_event_;
+               n->next_event_ = next_event;
+            }
+         }
+      }
+
+      boost::tuple<node_ptr, time_t> next_event(time_t t)
+      {
+         node_ptr n = instance(t);
+         if (n->t_ != infinite_time() && n->t_ > t)
+            return boost::make_tuple(n, n->t_);
+
+         return boost::make_tuple(n->next_event_, n->next_event_time_);
       }
 
       data_t const & data() const { return data_; }
-      time_t init_time() const { return init_time_; }
 
-      node_ptr fork(time_t t, node_ptr next) const
+   private:
+      void update_next(time_t init_time, node_ptr & next) const
       {
-         return new node_t(data_, t, nodes_, next);
-      }
-
-      node_ptr fork(time_t t) const
-      {
-         node_ptr res = new node_t(*this);
-         nodes_++;
-         res->init_time_ = t;
-         return res;
+         while (next && next->next_event_time_ <= init_time)
+         {
+            meta_.overhead++;
+            next = next->next_event_;
+         }
       }
 
    private:
       data_t data_;
       time_t init_time_;
 
-      node_ptr next_[2];
+      mutable node_ptr next_[2];
       time_t t_;
 
-      size_t & nodes_;
+      node_ptr next_event_;
+      time_t next_event_time_;
+
+      meta_info_t & meta_;
    };
 
 private:
@@ -256,95 +383,118 @@ private:
    }
 
 private:
+   boost::tuple<node_ptr, node_ptr> lower_bound_impl(const data_t &d, time_t time) const
+   {
+      node_ptr r, rn = root(time);
+      while (rn && rn->data() < d)
+      {
+         rn = rn->instance(current_time_);
+         if (r)
+            r->set_next(current_time_, rn);
+
+         r = rn;
+         rn = rn->next(current_time_);
+      }
+
+      return boost::make_tuple(r, rn);
+   }
+
+   boost::tuple<node_ptr, node_ptr> lower_bound_impl(const data_t &d) const
+   {
+      return lower_bound_impl(d, current_time_);
+   }
+
+private:
    time_t current_time_;
-   size_t nodes_;
+   meta_info_t meta_;
    std::map<time_t, node_ptr> roots_;
 };
 
-struct skip_list_viewer : cg::visualization::viewer_adapter
-{
-   skip_list_viewer(persistent_set_t<float, size_t> & set)
-      : set_(set)
-   {}
+//struct skip_list_viewer : cg::visualization::viewer_adapter
+//{
+//   skip_list_viewer(persistent_set_t<float, size_t> & set)
+//      : set_(set)
+//   {}
 
-   void draw(cg::visualization::drawer_type & drawer) const
-   {
-      drawer.set_color(Qt::green);
-      set_.visit(boost::bind(&skip_list_viewer::draw, this, boost::ref(drawer), _1, _2, _3, _4));
+//   void draw(cg::visualization::drawer_type & drawer) const
+//   {
+//      drawer.set_color(Qt::green);
+//      set_.visit(boost::bind(&skip_list_viewer::draw, this, boost::ref(drawer), _1, _2, _3, _4));
 
-      drawer.set_color(Qt::white);
-      for (float y : set_.slice(mouse_time_))
-         drawer.draw_point(point_2f(mouse_time_, y), 5);
+//      drawer.set_color(Qt::white);
+//      for (float y : set_.slice(mouse_time_))
+//         drawer.draw_point(point_2f(mouse_time_, y), 5);
 
-      if (float const * l = set_.lower_bound(mouse_data_, mouse_time_))
-      {
-         drawer.set_color(*l == mouse_data_ ? Qt::blue : Qt::red);
-         drawer.draw_point(point_2f(mouse_time_, *l), 5);
-      }
+//      if (float const * l = set_.lower_bound(mouse_data_, mouse_time_))
+//      {
+//         drawer.set_color(*l == mouse_data_ ? Qt::blue : Qt::red);
+//         drawer.draw_point(point_2f(mouse_time_, *l), 5);
+//      }
 
-      if (float const * l = set_.lower_bound(mouse_data_))
-      {
-         drawer.set_color(*l == mouse_data_ ? Qt::red : Qt::blue);
-         drawer.draw_point(point_2f(set_.current_time(), mouse_data_), 5);
-      }
-   }
+//      if (float const * l = set_.lower_bound(mouse_data_))
+//      {
+//         drawer.set_color(*l == mouse_data_ ? Qt::red : Qt::blue);
+//         drawer.draw_point(point_2f(set_.current_time(), mouse_data_), 5);
+//      }
+//   }
 
-   void print(cg::visualization::printer_type & p) const
-   {
-      p.corner_stream() << "insertions: " << insertions_ << cg::visualization::endl;
-      p.corner_stream() << "erasures: " << erasures_ << cg::visualization::endl;
-      p.corner_stream() << "nodes: " << set_.nodes() << cg::visualization::endl;
-   }
+//   void print(cg::visualization::printer_type & p) const
+//   {
+//      p.corner_stream() << "insertions: " << insertions_ << cg::visualization::endl;
+//      p.corner_stream() << "erasures: " << erasures_ << cg::visualization::endl;
+//      p.corner_stream() << "nodes: " << set_.meta().nodes << cg::visualization::endl;
+//      p.corner_stream() << "overheads: " << set_.meta().overhead << cg::visualization::endl;
+//   }
 
-   bool on_move(const cg::point_2f & pt)
-   {
-      mouse_time_ = pt.x;
-      mouse_data_ = 20 * (int)(pt.y / 20);
-      return true;
-   }
+//   bool on_move(const cg::point_2f & pt)
+//   {
+//      mouse_time_ = pt.x;
+//      mouse_data_ = 20 * (int)(pt.y / 20);
+//      return true;
+//   }
 
-   bool on_release(const point_2f & p)
-   {
-      if (float const * l = set_.lower_bound(mouse_data_))
-      {
-         if (*l == mouse_data_)
-         {
-            if (set_.erase(*l))
-               ++erasures_;
-            return true;
-         }
-      }
+//   bool on_release(const point_2f & p)
+//   {
+//      if (float const * l = set_.lower_bound(mouse_data_))
+//      {
+//         if (*l == mouse_data_)
+//         {
+//            if (set_.erase(*l))
+//               ++erasures_;
+//            return true;
+//         }
+//      }
 
-      set_.insert(mouse_data_);
-      ++insertions_;
+//      set_.insert(mouse_data_);
+//      ++insertions_;
 
-      return true;
-   }
+//      return true;
+//   }
 
-private:
-   bool draw(cg::visualization::drawer_type & drawer, float start_data, float start_time,
-             float finish_data, float finish_time) const
-   {
-      point_2f p[] = {
-         {start_time, start_data},
-         {finish_time, finish_data}
-      };
+//private:
+//   bool draw(cg::visualization::drawer_type & drawer, float start_data, float start_time,
+//             float finish_data, float finish_time) const
+//   {
+//      point_2f p[] = {
+//         {start_time, start_data},
+//         {finish_time, finish_data}
+//      };
 
-      drawer.draw_line(p[0], p[1]);
-      for (point_2f const & pt : p)
-         drawer.draw_point(pt, 3);
+//      drawer.draw_line(p[0], p[1]);
+//      for (point_2f const & pt : p)
+//         drawer.draw_point(pt, 3);
 
-      return start_time <= finish_time;
-   }
+//      return start_time <= finish_time;
+//   }
 
-private:
-   float mouse_data_;
-   float mouse_time_;
-   persistent_set_t<float, size_t> & set_;
+//private:
+//   float mouse_data_;
+//   float mouse_time_;
+//   persistent_set_t<float, size_t> & set_;
 
-   size_t insertions_;
-   size_t erasures_;
-};
+//   size_t insertions_;
+//   size_t erasures_;
+//};
 
 struct segment_t
 {
@@ -355,7 +505,7 @@ struct segment_t
 
 double test()
 {
-   const size_t operations = 2000;
+   const size_t operations = 4;
 
    boost::random::bernoulli_distribution<> coin(0.75);
    boost::random::uniform_01<float> uf;
@@ -382,23 +532,43 @@ double test()
 
             status[e] = l;
             data[l].insert(e);
-            test_set.insert(e);
             break;
          }
          while (true);
       }
       else
       {
-         size_t max_idx = data[l - 1].size() - 1;
+         size_t max_idx = data[l].size() - 1;
          size_t idx = ufi(eng, boost::random::uniform_int_distribution<>::param_type(0, max_idx));
          float val = *boost::next(data[l].begin(), idx);
 
          segments.push_back({val, status[val], l});
 
          data[l].erase(val);
-         test_set.erase(val);
       }
    }
+
+   for (size_t l = operations; !data.rbegin()->second.empty(); ++l)
+   {
+      data[l] = data[l - 1];
+
+      size_t max_idx = data[l].size() - 1;
+      size_t idx = ufi(eng, boost::random::uniform_int_distribution<>::param_type(0, max_idx));
+      float val = *boost::next(data[l].begin(), idx);
+
+      segments.push_back({val, status[val], l});
+
+      data[l].erase(val);
+   }
+
+   boost::random_shuffle(segments);
+   for (segment_t const & s: segments)
+      test_set.insert(s.val, s.t1, s.t2);
+
+   double res = test_set.meta().nodes * 1. / operations;
+   std::cout << "nodes / operations == " << res << std::endl;
+   res = test_set.meta().overhead * 1. / operations;
+   std::cout << "overhead / operations == " << res << std::endl;
 
    for (size_t l = 0; l != operations; ++l)
    {
@@ -440,15 +610,14 @@ double test()
       }
    }
 
-   return test_set.nodes() * 1. / operations;
+   return res;
 }
 
 int main(int argc, char ** argv)
 {
    //QApplication app(argc, argv);
 
-   double res = test();
-   std::cout << "nodes / operations == " << res << std::endl;
+   test();
 
 //   skip_list_viewer viewer;
 //   cg::visualization::run_viewer(&viewer, "skip list");
