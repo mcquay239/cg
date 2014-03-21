@@ -90,7 +90,7 @@ struct persistent_set_t
 
       do
       {
-         new_node->set_next(t1, rn);
+         new_node->set_next(t1, rn ? rn->instance(t1) : node_ptr());
          new_node = new_node->instance(t1);
 
          r->set_next(t1, new_node);
@@ -236,12 +236,22 @@ private:
          while (res->next_event_time_ != infinite_time() && res->next_event_time_ < t
                 && res->data() == res->next_event_->data())
          {
+            Verify(res->t_ == infinite_time() || res->next_[0] != res->next_[1]);
+
             update_next(res->init_time_, res->next_[0]);
             update_next(res->t_, res->next_[1]);
+
+            if (res->t_ != infinite_time() && res->next_[0] == res->next_[1])
+            {
+               res->t_ = infinite_time();
+               res->next_[1] = node_ptr();
+            }
 
             // !fake root
             if (data_initialized_)
                ++meta_.overhead;
+
+            Verify(res->t_ == infinite_time() || res->next_[0] != res->next_[1]);
 
             res = res->next_event_;
 
@@ -274,14 +284,53 @@ private:
          node_ptr res(this);
          while (res->next_event_time_ != infinite_time() && res->next_event_time_ <= t)
          {
+            Verify(res->t_ == infinite_time() || res->next_[0] != res->next_[1]);
+
             update_next(res->init_time_, res->next_[0]);
             update_next(res->t_, res->next_[1]);
+
+            if (res->t_ != infinite_time() && res->next_[0] == res->next_[1])
+            {
+               res->t_ = infinite_time();
+               res->next_[1] = node_ptr();
+            }
 
             // !fake root
             if (data_initialized_)
                ++meta_.overhead;
 
-            res = res->next_event_;
+            Verify(res->t_ == infinite_time() || res->next_[0] != res->next_[1]);
+
+            if (res->next_event_->init_time_ == res->next_event_->next_event_time_)
+            {
+               for (size_t l = 0; l != 2; ++l)
+                  Verify(res->next_event_->next_[l] == node_ptr());
+
+               res->next_event_ = res->next_event_->next_event_;
+            }
+            else
+            {
+               if (res->init_time_ != res->next_event_time_ && res->next_event_->data() == res->data())
+               {
+                  if (res->t_ != infinite_time() && res->next_event_->next_[0] == res->next_[1])
+                  {
+                     Verify(res->t_ != res->init_time_);
+
+                     res->next_event_->init_time_ = res->t_;
+                     res->next_event_time_ = res->t_;
+                     res->t_ = infinite_time();
+                     res->next_[1] = node_ptr();
+                  }
+                  else if (res->t_ == infinite_time() && res->next_event_->next_[0] == res->next_[0])
+                  {
+                     res->next_[0] = node_ptr();
+                     res->next_event_time_ = res->init_time_;
+                     res->next_event_->init_time_ = res->init_time_;
+                  }
+               }
+
+               res = res->next_event_;
+            }
 
             Verify(res);
          }
@@ -308,54 +357,54 @@ private:
       void set_next(time_t t, node_ptr next)
       {
          node_ptr n = instance(t);
-         if (n->t_ == infinite_time())
+
+         Verify(n->t_ == infinite_time() || n->next_[0] != n->next_[1]);
+         Verify(n->t_ != n->init_time_);
+         Verify(n->next_[0] == node_ptr() || n->next_[0] != n->next_[1]);
+
+         if (n->init_time_ == t)
          {
-            if (t == n->init_time_)
+            n->set_next_impl(0, next);
+         }
+         else if (n->t_ == t)
+         {
+            n->set_next_impl(1, next);
+         }
+         else if (n->t_ == infinite_time())
+         {
+            n->t_ = t;
+            n->set_next_impl(1, next);
+         }
+         else if (n->t_ > t)
+         {
+            if (n->next_[1] == next)
             {
-               n->next_[0] = next;
+               n->t_ = t;
             }
             else if (n->next_[0] != next)
             {
+               node_ptr next_event = new node_t(n->data(), n->t_, n->meta_, n->next_[1]);
+               next_event->next_event_ = n->next_event_;
+               next_event->next_event_time_ = n->next_event_time_;
+               n->next_event_ = next_event;
+               n->next_event_time_ = n->t_;
                n->t_ = t;
                n->next_[1] = next;
             }
          }
-         else
+         else if (n->next_[1] != next)
          {
-            if (n->t_ > t)
-            {
-               if (n->next_[0] != next)
-               {
-                  node_ptr next_event = new node_t(n->data(), n->t_, n->meta_, n->next_[1]);
-                  next_event->next_event_ = n->next_event_;
-                  next_event->next_event_time_ = n->next_event_time_;
-                  n->next_event_ = next_event;
-                  n->next_event_time_ = n->t_;
-                  n->t_ = t;
-                  n->next_[1] = next;
-               }
-            }
-            else if (n->t_ == t)
-            {
-               if (n->next_[0] == next)
-               {
-                  n->t_ = infinite_time();
-                  n->next_[1] = node_ptr();
-               }
-               else
-               {
-                  n->next_[1] = next;
-               }
-            }
-            else if (n->next_[1] != next)
-            {
-               node_ptr next_event = new node_t(n->data(), t, n->meta_, next);
-               next_event->next_event_ = n->next_event_;
-               next_event->next_event_time_ = n->next_event_time_;
-               n->next_event_ = next_event;
-               n->next_event_time_ = t;
-            }
+            node_ptr next_event = new node_t(n->data(), t, n->meta_, next);
+            next_event->next_event_ = n->next_event_;
+            next_event->next_event_time_ = n->next_event_time_;
+            n->next_event_ = next_event;
+            n->next_event_time_ = t;
          }
+
+         Verify(n->t_ == infinite_time() || n->next_[0] != n->next_[1]);
+         Verify(n->t_ != n->init_time_);
+         Verify(n->next_[0] == node_ptr() || n->next_[0] != n->next_[1]);
+
       }
 
       time_t next_event(time_t t)
@@ -385,6 +434,16 @@ private:
          }
       }
 
+      void set_next_impl(size_t i, node_ptr node)
+      {
+         next_[i] = node;
+         if (next_[0] == next_[1])
+         {
+            next_[1] = node_ptr();
+            t_ = infinite_time();
+         }
+      }
+
    private:
       // debugger shit
       bool data_initialized_;
@@ -405,6 +464,8 @@ private:
    boost::tuple<node_ptr, node_ptr> lower_bound_impl(const data_t &d, time_t time) const
    {
       node_ptr r = root_->instance(time), rn = r->next(time);
+      Verify(!rn || rn->data());
+
       while (rn && *(rn->data()) < d)
       {
          rn = rn->instance(time);
@@ -412,6 +473,8 @@ private:
 
          r = rn;
          rn = rn->next(time);
+
+         Verify(!rn || rn->data());
       }
 
       return boost::make_tuple(r, rn);
