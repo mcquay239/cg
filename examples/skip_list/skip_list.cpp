@@ -112,11 +112,11 @@ struct persistent_set_t
          Verify(r);
          Verify(!r->data() || *(r->data()) < d);
 
-         rn = r->next(t1);
+         rn = next(r, t1);
          if (rn && *(rn->data()) < d)
          {
             r = rn;
-            rn = rn->next(t1);
+            rn = next(r, t1);
          }
 
          Verify(!rn || *(rn->data()) > d);
@@ -133,6 +133,21 @@ struct persistent_set_t
 private:
    struct node_t;
    typedef boost::intrusive_ptr<node_t> node_ptr;
+
+private:
+   static node_ptr next(node_ptr r, time_t t)
+   {
+      r = r->instance(t);
+      if (node_ptr res = r->next(t))
+      {
+         res = res->instance(t);
+         r->set_next(t, res);
+
+         return res;
+      }
+
+      return node_ptr();
+   }
 
 //public:
    void insert(data_t const & d)
@@ -486,16 +501,13 @@ private:
 private:
    boost::tuple<node_ptr, node_ptr> lower_bound_impl(const data_t &d, time_t time) const
    {
-      node_ptr r = root_->instance(time), rn = r->next(time);
+      node_ptr r = root_->instance(time), rn = next(r, time);
       Verify(!rn || rn->data());
 
       while (rn && *(rn->data()) < d)
       {
-         rn = rn->instance(time);
-         r->set_next(time, rn);
-
          r = rn;
-         rn = rn->next(time);
+         rn = next(r, time);
 
          Verify(!rn || rn->data());
       }
@@ -692,10 +704,8 @@ void shrink(segments_t & segments)
    std::cout << "end, segments.size() == " << segments.size() << std::endl;
 }
 
-double test()
+boost::tuple<double, double> test(size_t const operations, bool test_result)
 {
-   const size_t operations = 10000;
-
    boost::random::bernoulli_distribution<> coin(0.75);
    boost::random::uniform_01<float> uf;
    boost::random::uniform_int_distribution<> ufi;
@@ -783,58 +793,78 @@ double test()
    }
 
    double res = test_set.meta().nodes * 1. / operations;
-   std::cout << "nodes / operations == " << res << std::endl;
-   res = test_set.meta().overhead * 1. / operations;
-   std::cout << "overhead / operations == " << res << std::endl;
+   //std::cout << "nodes / operations == " << res << std::endl;
+   double res2 = test_set.meta().overhead * 1. / operations;
+   //std::cout << "overhead / operations == " << res << std::endl;
 
-   for (size_t l = 0; l != data.size(); ++l)
+   if (test_result)
    {
-      if (!boost::equal(test_set.slice(l), data[l]))
+      for (size_t l = 0; l != data.size(); ++l)
       {
-         std::list<float> r1 = test_set.slice(l);
-         std::cout << "test_set: " << r1.size() << std::endl;
-         for (float f: test_set.slice(l))
-            std::cout << " " << f;
-         std::cout << std::endl;
+         if (!boost::equal(test_set.slice(l), data[l]))
+         {
+            std::list<float> r1 = test_set.slice(l);
+            std::cout << "test_set: " << r1.size() << std::endl;
+            for (float f: test_set.slice(l))
+               std::cout << " " << f;
+            std::cout << std::endl;
 
-         std::set<float> r2 = data[l];
-         std::cout << "data[l]: " << r2.size() << std::endl;
-         for (float f: data[l])
-            std::cout << " " << f;
-         std::cout << std::endl;
+            std::set<float> r2 = data[l];
+            std::cout << "data[l]: " << r2.size() << std::endl;
+            for (float f: data[l])
+               std::cout << " " << f;
+            std::cout << std::endl;
 
-         std::set<float> res;
-         boost::set_difference(r1, r2, std::inserter(res, res.end()));
+            std::set<float> res;
+            boost::set_difference(r1, r2, std::inserter(res, res.end()));
 
-         std::cout << "test_set - data:";
-         for (float f: res)
-            std::cout << " " << f;
-         std::cout << std::endl;
+            std::cout << "test_set - data:";
+            for (float f: res)
+               std::cout << " " << f;
+            std::cout << std::endl;
 
-         res.clear();
-         boost::set_difference(r2, r1, std::inserter(res, res.end()));
+            res.clear();
+            boost::set_difference(r2, r1, std::inserter(res, res.end()));
 
-         std::cout << "data - test_set:";
-         for (float f: res)
-            std::cout << " " << f;
-         std::cout << std::endl;
+            std::cout << "data - test_set:";
+            for (float f: res)
+               std::cout << " " << f;
+            std::cout << std::endl;
 
 
-//         skip_list_viewer viewer(test_set);
-//         cg::visualization::run_viewer(&viewer, "skip list");
+   //         skip_list_viewer viewer(test_set);
+   //         cg::visualization::run_viewer(&viewer, "skip list");
 
-         Verify(0);
+            Verify(0);
+         }
       }
    }
 
-   return res;
+   return boost::make_tuple(res, res2);
 }
 
 int main(int argc, char ** argv)
 {
    //QApplication app(argc, argv);
 
-   test();
+   for (size_t i = 1; i <= 14; ++i)
+   {
+      int l = 1 << i;
+      double r1 = 0, r2 = 0;
+
+      for (size_t k = 0; k != 100; ++k)
+      {
+         double res1, res2;
+         boost::tie(res1, res2) = test(l, false);
+         r1 += res1;
+         r2 += res2;
+      }
+
+      r1 /= 100;
+      r2 /= 100;
+
+      std::cout << l << ":\t " << r1 << " " << r2 << " " << r1 / log(l) << " " << r2 / log(l) << std::endl;
+   }
 
 //   skip_list_viewer viewer;
 //   cg::visualization::run_viewer(&viewer, "skip list");
