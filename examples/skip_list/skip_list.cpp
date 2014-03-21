@@ -303,6 +303,8 @@ private:
 
             if (res->next_event_->init_time_ == res->next_event_->next_event_time_)
             {
+               Verify(res->next_event_->t_ == infinite_time());
+
                for (size_t l = 0; l != 2; ++l)
                   Verify(res->next_event_->next_[l] == node_ptr());
 
@@ -361,6 +363,7 @@ private:
          Verify(n->t_ == infinite_time() || n->next_[0] != n->next_[1]);
          Verify(n->t_ != n->init_time_);
          Verify(n->next_[0] == node_ptr() || n->next_[0] != n->next_[1]);
+         Verify(n->t_ == infinite_time() || n->t_ < n->next_event_time_);
 
          if (n->init_time_ == t)
          {
@@ -383,28 +386,20 @@ private:
             }
             else if (n->next_[0] != next)
             {
-               node_ptr next_event = new node_t(n->data(), n->t_, n->meta_, n->next_[1]);
-               next_event->next_event_ = n->next_event_;
-               next_event->next_event_time_ = n->next_event_time_;
-               n->next_event_ = next_event;
-               n->next_event_time_ = n->t_;
+               n->insert_next_impl(n->t_, n->next_[1]);
                n->t_ = t;
                n->next_[1] = next;
             }
          }
          else if (n->next_[1] != next)
          {
-            node_ptr next_event = new node_t(n->data(), t, n->meta_, next);
-            next_event->next_event_ = n->next_event_;
-            next_event->next_event_time_ = n->next_event_time_;
-            n->next_event_ = next_event;
-            n->next_event_time_ = t;
+            n->insert_next_impl(t, next);
          }
 
          Verify(n->t_ == infinite_time() || n->next_[0] != n->next_[1]);
          Verify(n->t_ != n->init_time_);
          Verify(n->next_[0] == node_ptr() || n->next_[0] != n->next_[1]);
-
+         Verify(n->t_ == infinite_time() || n->t_ < n->next_event_time_);
       }
 
       time_t next_event(time_t t)
@@ -441,6 +436,34 @@ private:
          {
             next_[1] = node_ptr();
             t_ = infinite_time();
+         }
+      }
+
+      void insert_next_impl(time_t t, node_ptr next)
+      {
+         if (!next_event_ || data() != next_event_->data() || next_event_->t_ != infinite_time())
+         {
+            node_ptr next_event = new node_t(data(), t, meta_, next);
+            next_event->next_event_ = next_event_;
+            next_event->next_event_time_ = next_event_time_;
+            next_event_ = next_event;
+            next_event_time_ = t;
+         }
+         else
+         {
+            Verify(next_event_->init_time_ != t);
+
+            next_event_->next_[1] = next_event_->next_[0];
+            next_event_->t_ = next_event_->init_time_;
+            next_event_->init_time_ = t;
+            next_event_->set_next_impl(0, next);
+            next_event_time_ = t;
+
+            if (next_event_->t_ == next_event_->next_event_time_)
+            {
+               Verify(next_event_->next_[1] == node_ptr());
+               next_event_->t_ = infinite_time();
+            }
          }
       }
 
