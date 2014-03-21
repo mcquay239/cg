@@ -255,6 +255,7 @@ private:
 
             update_next(res->init_time_, res->next_[0]);
             update_next(res->t_, res->next_[1]);
+            update_next(res->init_time_, res->down_);
 
             if (res->t_ != infinite_time() && res->next_[0] == res->next_[1])
             {
@@ -303,6 +304,7 @@ private:
 
             update_next(res->init_time_, res->next_[0]);
             update_next(res->t_, res->next_[1]);
+            update_next(res->init_time_, res->down_);
 
             if (res->t_ != infinite_time() && res->next_[0] == res->next_[1])
             {
@@ -319,6 +321,7 @@ private:
             if (res->next_event_->init_time_ == res->next_event_->next_event_time_)
             {
                Verify(res->next_event_->t_ == infinite_time());
+               Verify(res->next_event_->down_ == node_ptr());
 
                for (size_t l = 0; l != 2; ++l)
                   Verify(res->next_event_->next_[l] == node_ptr());
@@ -359,16 +362,6 @@ private:
       {
          node_ptr n = instance(t);
          return t < n->t_ ? n->next_[0] : n->next_[1];
-      }
-
-      void terminate(time_t t)
-      {
-         node_ptr n = instance(t);
-
-         Verify(!n->next_event_);
-         Verify(n->next_event_time_ == infinite_time());
-
-         n->next_event_time_ = t;
       }
 
       void set_next(time_t t, node_ptr next)
@@ -459,6 +452,7 @@ private:
          if (!next_event_ || data() != next_event_->data() || next_event_->t_ != infinite_time())
          {
             node_ptr next_event = new node_t(data(), t, meta_, next);
+            next_event->down_ = (down_ ? down_->instance(t) : node_ptr());
             next_event->next_event_ = next_event_;
             next_event->next_event_time_ = next_event_time_;
             next_event_ = next_event;
@@ -496,6 +490,8 @@ private:
       time_t next_event_time_;
 
       meta_info_t & meta_;
+
+      node_ptr down_;
    };
 
 private:
@@ -523,7 +519,9 @@ private:
 private:
    time_t current_time_;
    meta_info_t meta_;
-   node_ptr root_;
+   std::list<node_ptr> roots_;
+   boost::random::bernoulli_distribution<> coin_;
+   boost::random::mt19937 eng_;
 };
 
 //struct skip_list_viewer : cg::visualization::viewer_adapter
