@@ -963,7 +963,7 @@ meta_info_t test(size_t const operations, bool test_result)
    return res;
 }
 
-meta_info_t test_speed(size_t operations)
+meta_info_t test_speed(size_t operations, bool dmp = false)
 {
    std::vector<size_t> times(2 * operations);
    for (size_t l = 0; l != operations * 2; ++l)
@@ -976,6 +976,9 @@ meta_info_t test_speed(size_t operations)
    boost::random_shuffle(values);
    boost::random_shuffle(times);
 
+   if (dmp)
+      std::cout << "data prepared" << std::endl;
+
    persistent_set_t<float, size_t> ps;
    for (size_t l = 0; l != operations; ++l)
    {
@@ -985,6 +988,9 @@ meta_info_t test_speed(size_t operations)
       ps.insert(values[l], times[2 * l], times[2 * l + 1]);
    }
 
+   if (dmp)
+      std::cout << "done" << std::endl;
+
    return ps.meta();
 }
 
@@ -992,35 +998,37 @@ int main(int argc, char ** argv)
 {
    //QApplication app(argc, argv);
 
-   test(1, true);
+//   test(1, true);
 
-   for (size_t i = 1; i <= 30; ++i)
-   {
-      int l = 1 << i;
-      double r[4];
-      for (size_t k = 0; k != 4; ++k)
-         r[k] = 0;
+//   for (size_t i = 1; i <= 30; ++i)
+//   {
+//      int l = 1 << i;
+//      double r[4];
+//      for (size_t k = 0; k != 4; ++k)
+//         r[k] = 0;
 
-      for (size_t k = 0; k != 10; ++k)
-      {
-         meta_info_t mi = test_speed(l);
-         r[0] += mi.nodes;
-         r[1] += mi.overhead;
-         r[2] += mi.insertion;
-         r[3] += mi.localization;
-      }
+//      for (size_t k = 0; k != 10; ++k)
+//      {
+//         meta_info_t mi = test_speed(l);
+//         r[0] += mi.nodes;
+//         r[1] += mi.overhead;
+//         r[2] += mi.insertion;
+//         r[3] += mi.localization;
+//      }
 
-      for (size_t k = 0; k != 4; ++k)
-         r[k] /= 10 * l;
+//      for (size_t k = 0; k != 4; ++k)
+//         r[k] /= 10 * l;
 
-      std::cout << l << ":\t ";
-      for (size_t k = 0; k != 4; ++k)
-         std::cout << r[k] << " " << r[k] / log(l) << " ";
+//      std::cout << l << ":\t ";
+//      for (size_t k = 0; k != 4; ++k)
+//         std::cout << r[k] << " " << r[k] / log(l) << " ";
 
-      std::cout << std::endl;
-   }
+//      std::cout << std::endl;
+//   }
 
 //   skip_list_viewer viewer;
 //   cg::visualization::run_viewer(&viewer, "skip list");
+
+   test_speed(1000000, true);
 }
 
