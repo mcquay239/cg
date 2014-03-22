@@ -12,6 +12,7 @@
 #include <boost/bind.hpp>
 #include <boost/random.hpp>
 #include <boost/range/adaptor/map.hpp>
+#include <boost/range/adaptor/reversed.hpp>
 #include <boost/range/algorithm.hpp>
 #include <boost/tuple/tuple.hpp>
 
@@ -42,6 +43,21 @@ size_t infinite(size_t *)
    return std::numeric_limits<size_t>::max();
 }
 
+struct meta_info_t
+{
+   meta_info_t()
+      : nodes(0)
+      , overhead(0)
+      , localization(0)
+      , insertion(0)
+   {}
+
+   size_t nodes;
+   size_t overhead;
+   size_t localization;
+   size_t insertion;
+};
+
 template <class Data, class Time>
 struct persistent_set_t
 {
@@ -49,9 +65,18 @@ struct persistent_set_t
    typedef Data data_t;
 
    persistent_set_t()
-      : current_time_(0)
-      , root_(new node_t(boost::none, current_time_, meta_))
+      : roots_(1, node_ptr(new node_t(boost::none, 0, meta_)))
+      , roots_size_(1)
+      , coin_(0.9)
    {}
+
+   ~persistent_set_t()
+   {
+      roots_.back()->clean(); // shit
+
+      roots_.clear();
+      Verify(meta_.nodes == 0);
+   }
 
 //   data_t const * lower_bound(data_t const & d, time_t t) const
 //   {
@@ -69,7 +94,7 @@ struct persistent_set_t
    std::list<data_t> slice(time_t t) const
    {
       std::list<data_t> res;
-      node_ptr r = root_->instance(t)->next(t);
+      node_ptr r = roots_.front()->instance(t)->next(t);
       while (r)
       {
          res.push_back(*(r->data()));
@@ -79,55 +104,109 @@ struct persistent_set_t
       return res;
    }
 
-   void insert(data_t const & d, time_t t1, time_t t2)
+   size_t levels() const { return roots_.size(); }
+
+   void insert(data_t const & d, time_t const t, time_t const t2)
    {
-      node_ptr r, rn;
-      boost::tie(r, rn) = lower_bound_impl(d, t1);
-
-      Verify(r);
-
-      node_ptr new_node(new node_t(d, t1, meta_, rn));
-
-      do
+      std::list<boost::tuple<node_ptr, node_ptr> > loc;
+      BOOST_FOREACH(node_ptr root, roots_ | boost::adaptors::reversed)
       {
-         new_node->set_next(t1, rn ? rn->instance(t1) : node_ptr());
-         new_node = new_node->instance(t1);
+         ++meta_.localization;
 
-         r->set_next(t1, new_node);
+         node_ptr r, rn;
+         node_ptr rt = (loc.empty() ? root : boost::get<0>(loc.front())->down());
 
-         t1 = r->next_event(t1);
+         Verify(rt);
 
-         if (t1 > t2)
-            break;
+         boost::tie(r, rn) = lower_bound_impl(rt, d, t);
 
-         r = r->instance(t1);
-
-         if (rn)
-         {
-            rn = rn->last(t1);
-            if (rn->ends(t1))
-               rn->update_end(new_node, t1);
-         }
+         loc.push_front(boost::make_tuple(r, rn));
 
          Verify(r);
-         Verify(!r->data() || *(r->data()) < d);
-
-         rn = next(r, t1);
-         if (rn && *(rn->data()) < d)
-         {
-            r = rn;
-            rn = next(r, t1);
-         }
-
-         Verify(!rn || *(rn->data()) > d);
       }
-      while (t1 < t2);
 
-      Verify(r);
+      node_ptr r, rn;
+      node_ptr down;
+      typedef boost::tuple<node_ptr, node_ptr> rrn_t;
+      BOOST_FOREACH(rrn_t rrn, loc)
+      {
+         ++meta_.insertion;
 
-      new_node->update_end(r, t2);
+         boost::tie(r, rn) = rrn;
 
-      r->set_next(t2, rn);
+         node_ptr new_node(new node_t(d, t, meta_, rn));
+         new_node->set_down(down);
+         down = new_node;
+
+         time_t t1 = t;
+         do
+         {
+            ++meta_.insertion;
+
+            new_node->set_next(t1, rn ? rn->instance(t1) : node_ptr());
+            new_node = new_node->instance(t1);
+
+            r->set_next(t1, new_node);
+
+            t1 = r->next_event(t1);
+
+            if (t1 > t2)
+               break;
+
+            r = r->instance(t1);
+
+            if (rn)
+            {
+               rn = rn->last(t1);
+               if (rn->ends(t1))
+                  rn->update_end(new_node, t1);
+            }
+
+            Verify(r);
+            Verify(!r->data() || *(r->data()) < d);
+
+            rn = next(r, t1);
+            if (rn && *(rn->data()) < d)
+            {
+               r = rn;
+               rn = next(r, t1);
+            }
+
+            Verify(!rn || *(rn->data()) > d);
+         }
+         while (t1 < t2);
+
+         Verify(r);
+
+         new_node->update_end(r, t2);
+
+         r->set_next(t2, rn);
+
+         if (coin_(eng_))
+         {
+            down = node_ptr();
+            break;
+         }
+      }
+
+      if (down && !coin_(eng_))
+      {
+         ++meta_.insertion;
+
+         node_ptr new_node(new node_t(d, t, meta_));
+         new_node->set_down(down);
+
+         Verify(!roots_.empty());
+
+         node_ptr proot = roots_.back();
+         roots_.push_back(new node_t(boost::none, 0, meta_));
+         roots_.back()->set_down(proot);
+         roots_.back()->set_next(t, new_node);
+         roots_.back()->set_next(t2, node_ptr());
+
+         ++roots_size_;
+      }
+
    }
 
 private:
@@ -149,56 +228,45 @@ private:
       return node_ptr();
    }
 
-//public:
-   void insert(data_t const & d)
-   {
-      node_ptr r, rn;
-      boost::tie(r, rn) = lower_bound_impl(d);
+////public:
+//   void insert(data_t const & d)
+//   {
+//      node_ptr r, rn;
+//      boost::tie(r, rn) = lower_bound_impl(d);
 
-      Verify(r);
-      Verify(!(rn && rn->data() == d));
+//      Verify(r);
+//      Verify(!(rn && rn->data() == d));
 
-      node_ptr new_node(new node_t(d, current_time_, meta_, rn));
-      r->set_next(current_time_, new_node);
+//      node_ptr new_node(new node_t(d, current_time_, meta_, rn));
+//      r->set_next(current_time_, new_node);
 
-      current_time_ += 1;
-   }
+//      current_time_ += 1;
+//   }
 
-   bool erase(data_t const & d)
-   {
-      node_ptr r, rn;
-      boost::tie(r, rn) = lower_bound_impl(d);
+//   bool erase(data_t const & d)
+//   {
+//      node_ptr r, rn;
+//      boost::tie(r, rn) = lower_bound_impl(d);
 
-      Verify(r);
+//      Verify(r);
 
-      if (!rn || rn->data() != d)
-         return false;
+//      if (!rn || rn->data() != d)
+//         return false;
 
-      node_ptr next = rn->next(current_time_);
-      r->set_next(current_time_, next);
+//      node_ptr next = rn->next(current_time_);
+//      r->set_next(current_time_, next);
 
-      current_time_ += 1;
+//      current_time_ += 1;
 
-      return true;
-   }
+//      return true;
+//   }
 
 public:
    typedef boost::function<bool (data_t, time_t, data_t, time_t)> visitor_f;
    void visit(visitor_f const & v) const
    {
-      root_->visit(v);
+      roots_->front()->visit(v);
    }
-
-   struct meta_info_t
-   {
-      meta_info_t()
-         : nodes(0)
-         , overhead(0)
-      {}
-
-      size_t nodes;
-      size_t overhead;
-   };
 
    meta_info_t const & meta() const { return meta_; }
 
@@ -230,6 +298,33 @@ private:
          --meta_.nodes;
       }
 
+      void clean()
+      {
+         for (size_t l = 0; l != 2; ++l)
+         {
+            if (next_[l])
+            {
+               node_ptr n = next_[l];
+               next_[l] = node_ptr();
+               n->clean();
+            }
+         }
+
+         if (next_event_)
+         {
+            node_ptr n = next_event_;
+            next_event_ = node_ptr();
+            n->clean();
+         }
+
+         if (down_)
+         {
+            node_ptr n = down_;
+            down_ = node_ptr();
+            n->clean();
+         }
+      }
+
       void visit(const visitor_f &v) const
       {
          for (size_t l = 0; l != 2; ++l)
@@ -245,8 +340,15 @@ private:
             next_event_->visit(v);
       }
 
+      node_ptr down() const
+      {
+         return down_;
+      }
+
       node_ptr last(time_t t)
       {
+         ++meta_.overhead;
+
          node_ptr res(this);
          while (res->next_event_time_ != infinite_time() && res->next_event_time_ < t
                 && res->data() == res->next_event_->data())
@@ -263,9 +365,7 @@ private:
                res->next_[1] = node_ptr();
             }
 
-            // !fake root
-            if (data_initialized_)
-               ++meta_.overhead;
+            ++meta_.overhead;
 
             Verify(res->t_ == infinite_time() || res->next_[0] != res->next_[1]);
 
@@ -297,6 +397,8 @@ private:
 
       node_ptr instance(time_t t)
       {
+         ++meta_.overhead;
+
          node_ptr res(this);
          while (res->next_event_time_ != infinite_time() && res->next_event_time_ <= t)
          {
@@ -312,9 +414,7 @@ private:
                res->next_[1] = node_ptr();
             }
 
-            // !fake root
-            if (data_initialized_)
-               ++meta_.overhead;
+            ++meta_.overhead;
 
             Verify(res->t_ == infinite_time() || res->next_[0] != res->next_[1]);
 
@@ -338,6 +438,7 @@ private:
 
                      res->next_event_->init_time_ = res->t_;
                      res->next_event_time_ = res->t_;
+                     res->next_event_->set_down(res->down_);
                      res->t_ = infinite_time();
                      res->next_[1] = node_ptr();
                   }
@@ -346,6 +447,8 @@ private:
                      res->next_[0] = node_ptr();
                      res->next_event_time_ = res->init_time_;
                      res->next_event_->init_time_ = res->init_time_;
+                     res->next_event_->set_down(res->down_);
+                     res->down_ = node_ptr();
                   }
                }
 
@@ -362,6 +465,12 @@ private:
       {
          node_ptr n = instance(t);
          return t < n->t_ ? n->next_[0] : n->next_[1];
+      }
+
+      void set_down(node_ptr down)
+      {
+         down_ = down;
+         update_next(init_time_, down_);
       }
 
       void set_next(time_t t, node_ptr next)
@@ -428,13 +537,14 @@ private:
       }
 
    private:
-      void update_next(time_t init_time, node_ptr & next) const
+      static void update_next(time_t init_time, node_ptr & next)
       {
-         while (next && next->next_event_time_ <= init_time)
-         {
-            meta_.overhead++;
-            next = next->next_event_;
-         }
+         next = (next ? next->instance(init_time) : node_ptr());
+//         while (next && next->next_event_time_ <= init_time)
+//         {
+//            meta_.overhead++;
+//            next = next->next_event_;
+//         }
       }
 
       void set_next_impl(size_t i, node_ptr node)
@@ -452,7 +562,7 @@ private:
          if (!next_event_ || data() != next_event_->data() || next_event_->t_ != infinite_time())
          {
             node_ptr next_event = new node_t(data(), t, meta_, next);
-            next_event->down_ = (down_ ? down_->instance(t) : node_ptr());
+            next_event->set_down(down_);
             next_event->next_event_ = next_event_;
             next_event->next_event_time_ = next_event_time_;
             next_event_ = next_event;
@@ -465,6 +575,7 @@ private:
             next_event_->next_[1] = next_event_->next_[0];
             next_event_->t_ = next_event_->init_time_;
             next_event_->init_time_ = t;
+            next_event_->set_down(down_);
             next_event_->set_next_impl(0, next);
             next_event_time_ = t;
 
@@ -495,13 +606,17 @@ private:
    };
 
 private:
-   boost::tuple<node_ptr, node_ptr> lower_bound_impl(const data_t &d, time_t time) const
+   boost::tuple<node_ptr, node_ptr> lower_bound_impl(node_ptr root, const data_t & d, time_t time) const
    {
-      node_ptr r = root_->instance(time), rn = next(r, time);
+      ++meta_.localization;
+
+      node_ptr r = root->instance(time), rn = next(r, time);
       Verify(!rn || rn->data());
 
       while (rn && *(rn->data()) < d)
       {
+         ++meta_.localization;
+
          r = rn;
          rn = next(r, time);
 
@@ -511,6 +626,11 @@ private:
       return boost::make_tuple(r, rn);
    }
 
+   boost::tuple<node_ptr, node_ptr> lower_bound_impl(const data_t &d, time_t time) const
+   {
+      return lower_bound_impl(roots_.front(), d, time);
+   }
+
    boost::tuple<node_ptr, node_ptr> lower_bound_impl(const data_t &d) const
    {
       return lower_bound_impl(d, current_time_);
@@ -518,8 +638,9 @@ private:
 
 private:
    time_t current_time_;
-   meta_info_t meta_;
+   mutable meta_info_t meta_;
    std::list<node_ptr> roots_;
+   size_t roots_size_;
    boost::random::bernoulli_distribution<> coin_;
    boost::random::mt19937 eng_;
 };
@@ -702,7 +823,7 @@ void shrink(segments_t & segments)
    std::cout << "end, segments.size() == " << segments.size() << std::endl;
 }
 
-boost::tuple<double, double> test(size_t const operations, bool test_result)
+meta_info_t test(size_t const operations, bool test_result)
 {
    boost::random::bernoulli_distribution<> coin(0.75);
    boost::random::uniform_01<float> uf;
@@ -714,6 +835,7 @@ boost::tuple<double, double> test(size_t const operations, bool test_result)
    std::map<float, size_t> status;
    std::map<size_t, std::set<float> > data;
    persistent_set_t<float, size_t> test_set;
+
    for (size_t l = 0; l != operations; ++l)
    {
       if (!data.empty())
@@ -761,6 +883,8 @@ boost::tuple<double, double> test(size_t const operations, bool test_result)
    }
 
    boost::random_shuffle(segments);
+   if (test_result)
+      std::cout << "start fill" << std::endl;
    size_t l = 0;
    try
    {
@@ -787,16 +911,14 @@ boost::tuple<double, double> test(size_t const operations, bool test_result)
 
       std::cout << "test end" << std::endl;
 
-      return 0.;
+      return meta_info_t();
    }
 
-   double res = test_set.meta().nodes * 1. / operations;
-   //std::cout << "nodes / operations == " << res << std::endl;
-   double res2 = test_set.meta().overhead * 1. / operations;
-   //std::cout << "overhead / operations == " << res << std::endl;
+   meta_info_t res = test_set.meta();
 
    if (test_result)
    {
+      std::cout << "levels: " << test_set.levels() << std::endl;
       for (size_t l = 0; l != data.size(); ++l)
       {
          if (!boost::equal(test_set.slice(l), data[l]))
@@ -838,30 +960,64 @@ boost::tuple<double, double> test(size_t const operations, bool test_result)
       }
    }
 
-   return boost::make_tuple(res, res2);
+   return res;
+}
+
+meta_info_t test_speed(size_t operations)
+{
+   std::vector<size_t> times(2 * operations);
+   for (size_t l = 0; l != operations * 2; ++l)
+      times[l] = l;
+
+   std::vector<size_t> values(operations);
+   for (size_t l = 0; l != operations; ++l)
+      values[l] = 1 + l;
+
+   boost::random_shuffle(values);
+   boost::random_shuffle(times);
+
+   persistent_set_t<float, size_t> ps;
+   for (size_t l = 0; l != operations; ++l)
+   {
+      if (times[2 * l] > times[2 * l + 1])
+         std::swap(times[2 * l], times[2 * l + 1]);
+
+      ps.insert(values[l], times[2 * l], times[2 * l + 1]);
+   }
+
+   return ps.meta();
 }
 
 int main(int argc, char ** argv)
 {
    //QApplication app(argc, argv);
 
-   for (size_t i = 1; i <= 14; ++i)
+   test(1, true);
+
+   for (size_t i = 1; i <= 30; ++i)
    {
       int l = 1 << i;
-      double r1 = 0, r2 = 0;
+      double r[4];
+      for (size_t k = 0; k != 4; ++k)
+         r[k] = 0;
 
-      for (size_t k = 0; k != 100; ++k)
+      for (size_t k = 0; k != 10; ++k)
       {
-         double res1, res2;
-         boost::tie(res1, res2) = test(l, false);
-         r1 += res1;
-         r2 += res2;
+         meta_info_t mi = test_speed(l);
+         r[0] += mi.nodes;
+         r[1] += mi.overhead;
+         r[2] += mi.insertion;
+         r[3] += mi.localization;
       }
 
-      r1 /= 100;
-      r2 /= 100;
+      for (size_t k = 0; k != 4; ++k)
+         r[k] /= 10 * l;
 
-      std::cout << l << ":\t " << r1 << " " << r2 << " " << r1 / log(l) << " " << r2 / log(l) << std::endl;
+      std::cout << l << ":\t ";
+      for (size_t k = 0; k != 4; ++k)
+         std::cout << r[k] << " " << r[k] / log(l) << " ";
+
+      std::cout << std::endl;
    }
 
 //   skip_list_viewer viewer;
