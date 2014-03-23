@@ -3,6 +3,7 @@
 #include <cg/psl/psl.h>
 
 #include <boost/function.hpp>
+#include <boost/bind.hpp>
 
 #include <map>
 #include <set>
@@ -301,7 +302,7 @@ boost::tuple<profiling_t, double> test_speed(size_t operations)
    return boost::make_tuple(ps.profiling(), dur);
 }
 
-boost::tuple<profiling_t, double> test_worst1(size_t N)
+boost::tuple<profiling_t, double> test_worst1(size_t N, bool shuffle)
 {
    segments_t segs(N * 2);
    for (size_t l = 0; l != N; ++l)
@@ -309,6 +310,9 @@ boost::tuple<profiling_t, double> test_worst1(size_t N)
 
    for (size_t l = 0; l != N; ++l)
       segs[l + N] = segment_t(2 * N - l + 1, 2 * l + 1, 4 * N - 2 * l - 1);
+
+   if (shuffle)
+      boost::random_shuffle(segs);
 
    timer_t t;
    persistent_set_t<float, size_t> ps;
@@ -342,7 +346,7 @@ boost::tuple<profiling_t, double> test_worst1(size_t N)
 }
 
 void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)> const & gen, bool nlogn,
-                     size_t finish = 30, size_t start = 6)
+                     size_t iterations = 10, size_t finish = 30, size_t start = 6)
 {
    if (nlogn)
       std::cout << "N\t N\t\t N log N\t N\t\t N log N \t N log N\t sec" << std::endl;
@@ -356,7 +360,7 @@ void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)>
       for (size_t k = 0; k != 5; ++k)
          r[k] = 0;
 
-      for (size_t k = 0; k != 10; ++k)
+      for (size_t k = 0; k != iterations; ++k)
       {
          profiling_t mi;
          double dur;
@@ -369,7 +373,7 @@ void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)>
       }
 
       for (size_t k = 0; k != 5; ++k)
-         r[k] /= 10 * l;
+         r[k] /= iterations * l;
 
       double const scale = nlogn ? log(l) : l;
 
@@ -387,7 +391,12 @@ void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)>
 
 TEST(psl, worst1)
 {
-   collect_results(&test_worst1, false, 14);
+   collect_results(boost::bind(&test_worst1, _1, false), false, 10, 14);
+}
+
+TEST(psl, worst1_shuffle)
+{
+   collect_results(boost::bind(&test_worst1, _1, true), true, 10, 14);
 }
 
 TEST(psl, correctness)
@@ -397,5 +406,5 @@ TEST(psl, correctness)
 
 TEST(psl, speed)
 {
-   collect_results(&test_speed, true);
+   collect_results(&test_speed, true, 1);
 }
