@@ -61,7 +61,7 @@ namespace cg
 
       ~persistent_set_t()
       {
-         roots_.back()->clean(); // shit
+         roots_.back()->clean();
 
          roots_.clear();
          Verify(profiling_.nodes == 0);
@@ -237,28 +237,32 @@ namespace cg
 
          void clean()
          {
-            for (size_t l = 0; l != 2; ++l)
+            std::list<node_ptr> s(1, node_ptr(this));
+            while (!s.empty())
             {
-               if (next_[l])
+               node_ptr t = s.back();
+               s.pop_back();
+
+               for (size_t l = 0; l != 2; ++l)
                {
-                  node_ptr n = next_[l];
-                  next_[l] = node_ptr();
-                  n->clean();
+                  if (t->next_[l])
+                  {
+                     s.push_back(t->next_[l]);
+                     t->next_[l] = node_ptr();
+                  }
                }
-            }
 
-            if (next_event_)
-            {
-               node_ptr n = next_event_;
-               next_event_ = node_ptr();
-               n->clean();
-            }
+               if (t->next_event_)
+               {
+                  s.push_back(t->next_event_);
+                  t->next_event_ = node_ptr();
+               }
 
-            if (down_)
-            {
-               node_ptr n = down_;
-               down_ = node_ptr();
-               n->clean();
+               if (t->down_)
+               {
+                  s.push_back(t->down_);
+                  t->down_ = node_ptr();
+               }
             }
          }
 

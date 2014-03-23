@@ -304,6 +304,8 @@ boost::tuple<profiling_t, double> test_speed(size_t operations)
 
 boost::tuple<profiling_t, double> test_worst1(size_t N, bool shuffle)
 {
+   N /= 2;
+
    segments_t segs(N * 2);
    for (size_t l = 0; l != N; ++l)
       segs[l] = segment_t(l + 1, 2 * l, 4 * N - 2 * l);
