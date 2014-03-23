@@ -2,14 +2,46 @@
 
 #include <cg/psl/psl.h>
 
+#include <boost/function.hpp>
+
 #include <map>
 #include <set>
 
 using cg::profiling_t;
 using cg::persistent_set_t;
 
+struct timer_t
+{
+   typedef boost::chrono::steady_clock clock_t;
+
+   timer_t()
+      : start_(clock_t::now())
+   {}
+
+   double secs_since_start() const
+   {
+      using namespace boost::chrono;
+      return duration_cast<milliseconds>(clock_t::now() - start_).count() * 1e-3;
+   }
+
+private:
+   clock_t::time_point start_;
+};
+
 struct segment_t
 {
+   segment_t()
+      : val(0)
+      , t1(0)
+      , t2(0)
+   {}
+
+   segment_t(float val, size_t t1, size_t t2)
+      : val(val)
+      , t1(t1)
+      , t2(t2)
+   {}
+
    float val;
    size_t t1;
    size_t t2;
@@ -241,7 +273,7 @@ profiling_t test(size_t const operations, bool test_result)
    return res;
 }
 
-boost::tuple<profiling_t, double> test_speed(size_t operations, bool dmp = false)
+boost::tuple<profiling_t, double> test_speed(size_t operations)
 {
    std::vector<size_t> times(2 * operations);
    for (size_t l = 0; l != operations * 2; ++l)
@@ -254,12 +286,7 @@ boost::tuple<profiling_t, double> test_speed(size_t operations, bool dmp = false
    boost::random_shuffle(values);
    boost::random_shuffle(times);
 
-   if (dmp)
-      std::cout << "data prepared" << std::endl;
-
-   typedef boost::chrono::steady_clock clock_t;
-   boost::chrono::time_point<clock_t> start = clock_t::now();
-
+   timer_t t;
    persistent_set_t<float, size_t> ps;
    for (size_t l = 0; l != operations; ++l)
    {
@@ -269,25 +296,60 @@ boost::tuple<profiling_t, double> test_speed(size_t operations, bool dmp = false
       ps.insert(values[l], times[2 * l], times[2 * l + 1]);
    }
 
-   clock_t::duration d = clock_t::now() - start;
-   double dur = boost::chrono::duration_cast<boost::chrono::milliseconds>(d).count() * 1e-3;
-
-   if (dmp)
-      std::cout << "done" << std::endl;
+   double dur = t.secs_since_start();
 
    return boost::make_tuple(ps.profiling(), dur);
 }
 
-TEST(psl, correctness)
+boost::tuple<profiling_t, double> test_worst1(size_t N)
 {
-   test(10000, true);
+   segments_t segs(N * 2);
+   for (size_t l = 0; l != N; ++l)
+      segs[l] = segment_t(l + 1, 2 * l, 4 * N - 2 * l);
+
+   for (size_t l = 0; l != N; ++l)
+      segs[l + N] = segment_t(2 * N - l + 1, 2 * l + 1, 4 * N - 2 * l - 1);
+
+   timer_t t;
+   persistent_set_t<float, size_t> ps;
+   for (segment_t const & s: segs)
+      ps.insert(s.val, s.t1, s.t2);
+
+   double dur = t.secs_since_start();
+   profiling_t pr = ps.profiling();
+
+//   for (size_t l = 0; l != 2 * N; ++l)
+//   {
+//      std::list<float> v[2] =
+//      {
+//         ps.slice(l),
+//         ps.slice(2 * N - l - 1)
+//      };
+
+//      for (size_t i = 0; i != 2; ++i)
+//      {
+//         EXPECT_EQ(v[i].size(), l + 1);
+//         if (v[i].size() == l + 1)
+//         {
+//            std::list<float>::const_iterator it = v[i].begin();
+//            for (size_t k = 0; k != l + 1; ++k, ++it)
+//               EXPECT_EQ(*it, N - l + k);
+//         }
+//      }
+//   }
+
+   return boost::make_tuple(pr, dur);
 }
 
-TEST(psl, speed)
+void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)> const & gen, bool nlogn,
+                     size_t finish = 30, size_t start = 6)
 {
-   std::cout << "N\t N\t\t N log N\t N\t\t N log N \t N log N\t sec" << std::endl;
+   if (nlogn)
+      std::cout << "N\t N\t\t N log N\t N\t\t N log N \t N log N\t sec" << std::endl;
+   else
+      std::cout << "N\t N\t\t N^2    \t N\t\t N^2     \t N^2    \t sec" << std::endl;
 
-   for (size_t i = 6; i <= 30; ++i)
+   for (size_t i = start; i <= finish; ++i)
    {
       int l = 1 << i;
       double r[5];
@@ -298,7 +360,7 @@ TEST(psl, speed)
       {
          profiling_t mi;
          double dur;
-         boost::tie(mi, dur) = test_speed(l);
+         boost::tie(mi, dur) = gen(l);
          r[0] += mi.nodes;
          r[1] += mi.overhead;
          r[2] += mi.insertion;
@@ -309,14 +371,31 @@ TEST(psl, speed)
       for (size_t k = 0; k != 5; ++k)
          r[k] /= 10 * l;
 
+      double const scale = nlogn ? log(l) : l;
+
       std::cout << l << ":\t ";
       std::cout << "n " << r[0] << "\t";
-      std::cout << "o " << r[1] / log(l) << "\t";
-      std::cout << "i " << r[2] << "\t";
+      std::cout << "o " << r[1] / scale << "\t";
+      std::cout << "i " << r[2] / scale << "\t";
       std::cout << "l " << r[3] / log(l) << "\t";
-      std::cout << "t " << r[4] / log(l) << "\t";
+      std::cout << "t " << r[4] / scale << "\t";
       std::cout << "(" << r[4] * 10 * l << ")";
 
       std::cout << std::endl;
    }
+}
+
+TEST(psl, worst1)
+{
+   collect_results(&test_worst1, false, 14);
+}
+
+TEST(psl, correctness)
+{
+   test(10000, true);
+}
+
+TEST(psl, speed)
+{
+   collect_results(&test_speed, true);
 }
