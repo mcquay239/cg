@@ -379,13 +379,13 @@ void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)>
 
       double const scale = nlogn ? log(l) : l;
 
-      std::cout << l << ":\t ";
+      std::cout << "2^" << i << ":\t ";
       std::cout << "n " << r[0] << "\t";
       std::cout << "o " << r[1] / scale << "\t";
       std::cout << "i " << r[2] / scale << "\t";
       std::cout << "l " << r[3] / log(l) << "\t";
       std::cout << "t " << r[4] / scale << "\t";
-      std::cout << "(" << r[4] * 10 * l << ")";
+      std::cout << "(" << r[4] * iterations * l << ")";
 
       std::cout << std::endl;
    }
@@ -393,12 +393,32 @@ void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)>
 
 TEST(psl, worst1)
 {
-   collect_results(boost::bind(&test_worst1, _1, false), false, 10, 14);
+   collect_results(boost::bind(&test_worst1, _1, false), false, 1);
+}
+
+TEST(psl, worst1_10)
+{
+   collect_results(boost::bind(&test_worst1, _1, false), false, 10);
+}
+
+TEST(psl, worst1_100)
+{
+   collect_results(boost::bind(&test_worst1, _1, false), false, 100);
 }
 
 TEST(psl, worst1_shuffle)
 {
-   collect_results(boost::bind(&test_worst1, _1, true), true, 10, 14);
+   collect_results(boost::bind(&test_worst1, _1, true), true, 1);
+}
+
+TEST(psl, worst1_shuffle_10)
+{
+   collect_results(boost::bind(&test_worst1, _1, true), true, 10);
+}
+
+TEST(psl, worst1_shuffle_100)
+{
+   collect_results(boost::bind(&test_worst1, _1, true), true, 100);
 }
 
 TEST(psl, correctness)
@@ -409,4 +429,14 @@ TEST(psl, correctness)
 TEST(psl, speed)
 {
    collect_results(&test_speed, true, 1);
+}
+
+TEST(psl, speed_10)
+{
+   collect_results(&test_speed, true, 10);
+}
+
+TEST(psl, speed_100)
+{
+   collect_results(&test_speed, true, 100);
 }
