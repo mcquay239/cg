@@ -302,17 +302,8 @@ boost::tuple<profiling_t, double> test_speed(size_t operations)
    return boost::make_tuple(ps.profiling(), dur);
 }
 
-boost::tuple<profiling_t, double> test_worst1(size_t N, bool shuffle)
+boost::tuple<profiling_t, double> process_segments(segments_t segs, bool shuffle)
 {
-   N /= 2;
-
-   segments_t segs(N * 2);
-   for (size_t l = 0; l != N; ++l)
-      segs[l] = segment_t(l + 1, 2 * l, 4 * N - 2 * l);
-
-   for (size_t l = 0; l != N; ++l)
-      segs[l + N] = segment_t(2 * N - l + 1, 2 * l + 1, 4 * N - 2 * l - 1);
-
    if (shuffle)
       boost::random_shuffle(segs);
 
@@ -324,27 +315,35 @@ boost::tuple<profiling_t, double> test_worst1(size_t N, bool shuffle)
    double dur = t.secs_since_start();
    profiling_t pr = ps.profiling();
 
-//   for (size_t l = 0; l != 2 * N; ++l)
-//   {
-//      std::list<float> v[2] =
-//      {
-//         ps.slice(l),
-//         ps.slice(2 * N - l - 1)
-//      };
-
-//      for (size_t i = 0; i != 2; ++i)
-//      {
-//         EXPECT_EQ(v[i].size(), l + 1);
-//         if (v[i].size() == l + 1)
-//         {
-//            std::list<float>::const_iterator it = v[i].begin();
-//            for (size_t k = 0; k != l + 1; ++k, ++it)
-//               EXPECT_EQ(*it, N - l + k);
-//         }
-//      }
-//   }
-
    return boost::make_tuple(pr, dur);
+}
+
+boost::tuple<profiling_t, double> test_worst1(size_t N, bool shuffle)
+{
+   N /= 2;
+
+   segments_t segs(N * 2);
+   for (size_t l = 0; l != N; ++l)
+      segs[l] = segment_t(l + 1, 2 * l, 4 * N - 2 * l);
+
+   for (size_t l = 0; l != N; ++l)
+      segs[l + N] = segment_t(2 * N - l + 1, 2 * l + 1, 4 * N - 2 * l - 1);
+
+   return process_segments(segs, shuffle);
+}
+
+boost::tuple<profiling_t, double> test_worst2(size_t N, bool inv, bool shuffle)
+{
+   N /= 2;
+
+   segments_t segs(2 * N);
+   for (size_t l = 0; l != N; ++l)
+      segs[l] = segment_t(N, N + 2 * l, N + 2 * l + 1);
+
+   for (size_t l = 0; l != N; ++l)
+      segs[N + l] = segment_t(l, (inv ? N - 1 - l : l), (inv ? 3 * N + l : 4 * N - l - 1));
+
+   return process_segments(segs, shuffle);
 }
 
 void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)> const & gen, bool nlogn,
@@ -353,7 +352,7 @@ void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)>
    if (nlogn)
       std::cout << "N\t N\t\t N log N\t N\t\t N log N \t N log N\t sec" << std::endl;
    else
-      std::cout << "N\t N\t\t N^2    \t N\t\t N^2     \t N^2    \t sec" << std::endl;
+      std::cout << "N\t N\t\t N^2    \t N^2\t\t N log N \t N^2    \t sec" << std::endl;
 
    for (size_t i = start; i <= finish; ++i)
    {
@@ -382,13 +381,33 @@ void collect_results(boost::function<boost::tuple<profiling_t, double> (size_t)>
       std::cout << "2^" << i << ":\t ";
       std::cout << "n " << r[0] << "\t";
       std::cout << "o " << r[1] / scale << "\t";
-      std::cout << "i " << r[2] / scale << "\t";
+      std::cout << "i " << r[2] / (nlogn ? 1 : l) << "\t";
       std::cout << "l " << r[3] / log(l) << "\t";
       std::cout << "t " << r[4] / scale << "\t";
       std::cout << "(" << r[4] * iterations * l << ")";
 
       std::cout << std::endl;
    }
+}
+
+TEST(psl, worst2_10)
+{
+   collect_results(boost::bind(&test_worst2, _1, false, false), false, 10);
+}
+
+TEST(psl, worst2_inv_10)
+{
+   collect_results(boost::bind(&test_worst2, _1, true, false), false, 10);
+}
+
+TEST(psl, worst2_shuffle_10)
+{
+   collect_results(boost::bind(&test_worst2, _1, false, true), false, 10);
+}
+
+TEST(psl, worst2_inv_shuffle_10)
+{
+   collect_results(boost::bind(&test_worst2, _1, true, true), false, 10);
 }
 
 TEST(psl, worst1)
