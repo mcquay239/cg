@@ -125,3 +125,37 @@ TEST(orientation, uniform1)
    }
 }
 
+
+TEST(orientation_3d_vectors, simple)
+{
+    cg::point_3 i(1, 0, 0);
+    cg::point_3 j(0, 1, 0);
+    cg::point_3 k(0, 0, 1);
+    EXPECT_EQ(cg::orientation_t::CG_RIGHT, cg::orientation_3d_vectors(i, j, k));
+    EXPECT_EQ(cg::orientation_t::CG_LEFT, cg::orientation_3d_vectors(i, k, j));
+    EXPECT_EQ(cg::orientation_t::CG_LEFT, cg::orientation_3d_vectors(k, j, i));
+    EXPECT_EQ(cg::orientation_t::CG_LEFT, cg::orientation_3d_vectors(j, i, k));
+    EXPECT_EQ(cg::orientation_t::CG_RIGHT, cg::orientation_3d_vectors(j, k, i));
+    EXPECT_EQ(cg::orientation_t::CG_RIGHT, cg::orientation_3d_vectors(k, i, j));
+
+    EXPECT_EQ(cg::orientation_t::CG_RIGHT, *cg::orientation_3d_vectors_r()(i, j, k));
+    EXPECT_EQ(cg::orientation_t::CG_LEFT, *cg::orientation_3d_vectors_r()(i, k, j));
+    EXPECT_EQ(cg::orientation_t::CG_LEFT, *cg::orientation_3d_vectors_r()(k, j, i));
+    EXPECT_EQ(cg::orientation_t::CG_LEFT, *cg::orientation_3d_vectors_r()(j, i, k));
+    EXPECT_EQ(cg::orientation_t::CG_RIGHT, *cg::orientation_3d_vectors_r()(j, k, i));
+    EXPECT_EQ(cg::orientation_t::CG_RIGHT, *cg::orientation_3d_vectors_r()(k, i, j));
+}
+
+TEST(orientation_3d_vectors, uniform_line)
+{
+    uniform_random_real<double, std::mt19937> distr(-(1LL << 53), (1LL << 53));
+
+    std::vector<cg::point_3> pts = uniform_points3d(1000);
+    for (size_t l = 0; l < pts.size(); l++)
+    {
+        cg::point_3 a = pts[l];
+        cg::point_3 b = a * distr();
+        cg::point_3 c = a * distr();
+        EXPECT_EQ(*cg::orientation_3d_vectors_r()(a, b, c), cg::orientation_3d_vectors(a, b, c));
+    }
+}

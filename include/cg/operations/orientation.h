@@ -118,4 +118,81 @@ namespace cg
    {
       return (a <= b && b <= c) || (c <= b && b <= a);
    }
+
+    struct orientation_3d_vectors_d
+    {
+        boost::optional<orientation_t> operator() (point_3 const & a, point_3 const & b, point_3 const & c) const
+        {
+            double x23 = a.x * (b.y*c.z-b.z*c.y);
+            double y13 = a.y * (b.x*c.z-b.z*c.x);
+            double z12 = a.z * (b.x*c.y-b.y*c.x);
+            double eps = (fabs(x23) + fabs(y13) + fabs(z12)) * 8 * std::numeric_limits<double>::epsilon();
+
+            double res = x23 - y13 + z12;
+
+            if (res > eps)
+                return CG_RIGHT;
+
+            if (res < -eps)
+                return CG_LEFT;
+
+            return boost::none;
+        }
+    };
+
+    struct orientation_3d_vectors_i
+    {
+        boost::optional<orientation_t> operator() (point_3 const & a, point_3 const & b, point_3 const & c) const
+        {
+            typedef boost::numeric::interval_lib::unprotect<boost::numeric::interval<double> >::type interval;
+
+            boost::numeric::interval<double>::traits_type::rounding _;
+            interval res = (interval(b.y) * c.z - interval(b.z) * c.y) * a.x
+                    - (interval(b.x) * c.z - interval(b.z) * c.x) * a.y
+                    + (interval(b.x) * c.y - interval(b.y) * c.x) * a.z;
+
+            if (res.lower() > 0)
+                return CG_RIGHT;
+
+            if (res.upper() < 0)
+                return CG_LEFT;
+
+            if (res.upper() == res.lower())
+                return CG_COLLINEAR;
+
+            return boost::none;
+        }
+    };
+
+    struct orientation_3d_vectors_r
+    {
+        boost::optional<orientation_t> operator() (point_3 const & a, point_3 const & b, point_3 const & c) const
+        {
+            mpq_class res = (mpq_class(b.y) * c.z - mpq_class(b.z) * c.y) * a.x
+                    - (mpq_class(b.x) * c.z - mpq_class(b.z) * c.x) * a.y
+                    + (mpq_class(b.x) * c.y - mpq_class(b.y) * c.x) * a.z;
+
+            int cres = cmp(res, 0);
+
+            if (cres > 0)
+                return CG_RIGHT;
+
+            if (cres < 0)
+                return CG_LEFT;
+
+            return CG_COLLINEAR;
+        }
+    };
+
+    inline orientation_t orientation_3d_vectors(point_3 const & a, point_3 const & b, point_3 const & c)
+    {
+//        if (boost::optional<orientation_t> v = orientation_3d_vectors_d()(a, b, c))
+//            return *v;
+
+        if (boost::optional<orientation_t> v = orientation_3d_vectors_i()(a, b, c))
+            return *v;
+
+        return *orientation_3d_vectors_r()(a, b, c);
+    }
+
 }
