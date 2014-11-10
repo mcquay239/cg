@@ -1,9 +1,13 @@
 #pragma once
 
 #include "range.h"
+#include "point.h"
 
 namespace cg
 {
+   template <class Scalar>
+   struct point_2t;
+
    template <class Scalar> struct vector_2t;
    typedef vector_2t<double> vector_2;
    typedef vector_2t<float>  vector_2f;
@@ -25,6 +29,11 @@ namespace cg
       vector_2t(Scalar x, Scalar y)
          : x(x)
          , y(y)
+      {}
+
+      vector_2t(point_2t<Scalar> p)
+         : x(p.x)
+         , y(p.y)
       {}
    };
 
