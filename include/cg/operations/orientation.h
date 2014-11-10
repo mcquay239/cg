@@ -26,7 +26,7 @@ namespace cg
 
    struct orientation_d
    {
-      boost::optional<orientation_t> operator() (point_2 const & a, point_2 const & b, point_2 const & c) const
+      boost::optional<orientation_t> operator()(point_2 const &a, point_2 const &b, point_2 const &c) const
       {
          double l = (b.x - a.x) * (c.y - a.y);
          double r = (b.y - a.y) * (c.x - a.x);
@@ -45,13 +45,13 @@ namespace cg
 
    struct orientation_i
    {
-      boost::optional<orientation_t> operator() (point_2 const & a, point_2 const & b, point_2 const & c) const
+      boost::optional<orientation_t> operator()(point_2 const &a, point_2 const &b, point_2 const &c) const
       {
          typedef boost::numeric::interval_lib::unprotect<boost::numeric::interval<double> >::type interval;
 
          boost::numeric::interval<double>::traits_type::rounding _;
-         interval res =   (interval(b.x) - a.x) * (interval(c.y) - a.y)
-                        - (interval(b.y) - a.y) * (interval(c.x) - a.x);
+         interval res = (interval(b.x) - a.x) * (interval(c.y) - a.y)
+                 - (interval(b.y) - a.y) * (interval(c.x) - a.x);
 
          if (res.lower() > 0)
             return CG_LEFT;
@@ -68,10 +68,10 @@ namespace cg
 
    struct orientation_r
    {
-      boost::optional<orientation_t> operator() (point_2 const & a, point_2 const & b, point_2 const & c) const
+      boost::optional<orientation_t> operator()(point_2 const &a, point_2 const &b, point_2 const &c) const
       {
-         mpq_class res =   (mpq_class(b.x) - a.x) * (mpq_class(c.y) - a.y)
-                         - (mpq_class(b.y) - a.y) * (mpq_class(c.x) - a.x);
+         mpq_class res = (mpq_class(b.x) - a.x) * (mpq_class(c.y) - a.y)
+                 - (mpq_class(b.y) - a.y) * (mpq_class(c.x) - a.x);
 
          int cres = cmp(res, 0);
 
@@ -85,7 +85,7 @@ namespace cg
       }
    };
 
-   inline orientation_t orientation(point_2 const & a, point_2 const & b, point_2 const & c)
+   inline orientation_t orientation(point_2 const &a, point_2 const &b, point_2 const &c)
    {
       if (boost::optional<orientation_t> v = orientation_d()(a, b, c))
          return *v;
@@ -96,7 +96,7 @@ namespace cg
       return *orientation_r()(a, b, c);
    }
 
-   inline bool counterclockwise(contour_2 const & c)
+   inline bool counterclockwise(contour_2 const &c)
    {
       if (c.size() < 3) return true;
 
@@ -113,9 +113,86 @@ namespace cg
       return orientation(prev, min_point, next) == CG_LEFT;
    }
 
-   template <class Scalar>
-   bool collinear_are_ordered_along_line(point_2t<Scalar> const & a, point_2t<Scalar> const & b, point_2t<Scalar> const & c)
+   template<class Scalar>
+   bool collinear_are_ordered_along_line(point_2t<Scalar> const &a, point_2t<Scalar> const &b, point_2t<Scalar> const &c)
    {
       return (a <= b && b <= c) || (c <= b && b <= a);
    }
+
+   struct orientation_3d_vectors_d
+   {
+      boost::optional<orientation_t> operator()(point_3 const &a, point_3 const &b, point_3 const &c) const
+      {
+         double x23 = a.x * (b.y * c.z - b.z * c.y);
+         double y13 = a.y * (b.x * c.z - b.z * c.x);
+         double z12 = a.z * (b.x * c.y - b.y * c.x);
+         double eps = (fabs(x23) + fabs(y13) + fabs(z12)) * 8 * std::numeric_limits<double>::epsilon();
+
+         double res = x23 - y13 + z12;
+
+         if (res > eps)
+            return CG_RIGHT;
+
+         if (res < -eps)
+            return CG_LEFT;
+
+         return boost::none;
+      }
+   };
+
+   struct orientation_3d_vectors_i
+   {
+      boost::optional<orientation_t> operator()(point_3 const &a, point_3 const &b, point_3 const &c) const
+      {
+         typedef boost::numeric::interval_lib::unprotect<boost::numeric::interval<double> >::type interval;
+
+         boost::numeric::interval<double>::traits_type::rounding _;
+         interval res = (interval(b.y) * c.z - interval(b.z) * c.y) * a.x
+                 - (interval(b.x) * c.z - interval(b.z) * c.x) * a.y
+                 + (interval(b.x) * c.y - interval(b.y) * c.x) * a.z;
+
+         if (res.lower() > 0)
+            return CG_RIGHT;
+
+         if (res.upper() < 0)
+            return CG_LEFT;
+
+         if (res.upper() == res.lower())
+            return CG_COLLINEAR;
+
+         return boost::none;
+      }
+   };
+
+   struct orientation_3d_vectors_r
+   {
+      boost::optional<orientation_t> operator()(point_3 const &a, point_3 const &b, point_3 const &c) const
+      {
+         mpq_class res = (mpq_class(b.y) * c.z - mpq_class(b.z) * c.y) * a.x
+                 - (mpq_class(b.x) * c.z - mpq_class(b.z) * c.x) * a.y
+                 + (mpq_class(b.x) * c.y - mpq_class(b.y) * c.x) * a.z;
+
+         int cres = cmp(res, 0);
+
+         if (cres > 0)
+            return CG_RIGHT;
+
+         if (cres < 0)
+            return CG_LEFT;
+
+         return CG_COLLINEAR;
+      }
+   };
+
+   inline orientation_t orientation_3d_vectors(point_3 const &a, point_3 const &b, point_3 const &c)
+   {
+//        if (boost::optional<orientation_t> v = orientation_3d_vectors_d()(a, b, c))
+//            return *v;
+
+      if (boost::optional<orientation_t> v = orientation_3d_vectors_i()(a, b, c))
+         return *v;
+
+      return *orientation_3d_vectors_r()(a, b, c);
+   }
+
 }
